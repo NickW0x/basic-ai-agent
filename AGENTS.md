@@ -19,12 +19,16 @@ Requires **Node 24+**.
 agent/
   agent.ts                    # Root runtime config (model, limits)
   instructions.md             # Orchestrator system prompt
-  skills/                     # Orchestrator skills (load_skill)
+  skills/
+    ai-elements/              # AI Elements reference skill
   tools/                      # Root tools (disableTool overrides)
   subagents/                  # researcher, analyst, summarizer, coder, marketer
   channels/
     chat-sdk.ts               # Slack, Telegram, WhatsApp, Messenger, X, GChat, GitHub, Sendblue, Discord, Teams, Linear, Resend
     eve.ts                    # Browser HTTP channel auth
+services/
+  voice-proxy/                # Grok Voice WebSocket proxy (Railway; see README Voice mode)
+    src/                      # server.ts, proxy-handler.ts, xai-config.ts
 src/
   app/page.tsx                # Web chat UI (useEveAgent + AI Elements)
   app/settings/               # Sidebar settings (Runtime + Behavior tabs)
@@ -35,8 +39,14 @@ src/
     knowledge/page.tsx        # xAI Collections + search_knowledge
     voice/page.tsx            # Grok Voice via Railway proxy (phase 2)
   app/api/status/             # Unified live status API
-  components/chat/            # Eve shell, message list, subagent badges, system health
+  app/api/voice/              # Session token mint for Grok Voice
+  app/api/transcribe/         # xAI STT fallback for SpeechInput
+  components/chat/            # Eve shell, message list, subagent badges, voice panel
   components/settings/        # Shell, dashboards, draft context, runtime panels
+  hooks/use-grok-voice.ts     # Grok Voice realtime hook
+  lib/voice/                  # persona-state, runtime, settings-resolver
+  lib/voice-client/           # GrokVoiceClient protocol
+  lib/audio/                  # Web Audio capture/playback
   lib/settings-runtime-contract.ts  # Mock field → eve/xAI/Railway replacement hints
   lib/settings-mock/          # Preview seed data for Behavior tabs
   lib/agent-meta.ts           # Shared agent roster metadata
@@ -53,6 +63,7 @@ next.config.ts                # withEve() wraps Next.js config
 3. The **orchestrator** in `agent/instructions.md` delegates to subagents (`researcher`, `analyst`, `summarizer`, `coder`, `marketer`) for focused work.
 4. `withEve()` in `next.config.ts` runs the Next.js app and eve agent runtime together.
 5. **Settings dashboards** poll `GET /api/status` where live probes apply (Connectors, Agents). **Behavior tabs** (Souls, Skills, Knowledge, Voice) use client-side mock state via `SettingsDraftProvider` — preview mode with sticky save bar and Sonner toasts; persistence is phase 2.
+6. **Voice mode** mints ephemeral tokens via `POST /api/voice/session`, connects through the Railway `services/voice-proxy/` WebSocket proxy, and uses `POST /api/transcribe` as SpeechInput STT fallback. Deploy and env setup: see [README.md — Voice mode](README.md#voice-mode).
 
 ## Settings (preview scaffold)
 

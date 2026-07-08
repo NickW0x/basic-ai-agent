@@ -8,6 +8,9 @@ A multi-platform multi-agent assistant built with [eve](https://eve.dev), [Chat 
 - **[Vercel AI Gateway](https://vercel.com/docs/ai-gateway) API key** — set `AI_GATEWAY_API_KEY` in `.env.local`
 - **Optional:** `TAVILY_API_KEY` for real web search via the researcher subagent
 - **Optional:** `REDIS_URL` for production Chat SDK thread subscriptions (Upstash Redis recommended)
+- **Optional (voice mode):** `XAI_API_KEY` for Grok Voice realtime sessions and SpeechInput STT fallback
+- **Optional (voice mode):** Railway-deployed proxy from [`services/voice-proxy/`](services/voice-proxy/) — deploy as a **new** Railway service; never modify the fieldflow service at `voice.tradecraft.nexus`
+- **Optional (voice mode):** `NEXT_PUBLIC_VOICE_PROXY_URL` and `VOICE_PROXY_SHARED_SECRET` on Vercel/local (must match Railway)
 
 ## Quick start (web chat)
 
@@ -28,13 +31,15 @@ npm run dev
 
 3. Open [http://localhost:3000](http://localhost:3000).
 
+Voice mode is optional — configure env vars and deploy the Railway proxy per [Voice mode](#voice-mode) before using the header toggle.
+
 [`withEve()`](next.config.ts) in `next.config.ts` runs the Next.js app and eve agent runtime together. The browser calls eve same-origin via `useEveAgent` — no separate agent URL is needed. In local dev, [`getEveDevHost()`](src/lib/eve-host.ts) resolves the eve dev server origin when rewrites lag.
 
 ### Platform webhooks
 
 To connect Slack, Telegram, WhatsApp, Messenger, X, Google Chat, GitHub, Sendblue, Discord, Teams, Linear, or Resend email, expose your server to the internet (ngrok, Cloudflare Tunnel, or a Vercel preview) and configure webhook URLs in each platform's developer console. See [Platform Setup](#platform-setup) below.
 
-Adapters are registered conditionally — only platforms with credentials in `.env.local` are enabled. Open [`/settings`](http://localhost:3000/settings) for connector configuration status, or [`/settings/agents`](http://localhost:3000/settings/agents) for live agent runtime health, Upstash Redis probes, and tool readiness.
+Adapters are registered conditionally — only platforms with credentials in `.env.local` are enabled. Open [`/settings`](http://localhost:3000/settings) for the full settings sidebar — Runtime tabs (Connectors, Agents & Tools) show live status; Behavior tabs (Souls, Skills, Knowledge, Voice) are preview-only scaffolds. See [Settings](#settings).
 
 ## Architecture
 
@@ -75,6 +80,21 @@ flowchart TD
 - **Redis** persists Chat SDK thread subscriptions across serverless instances in production. Without a real `REDIS_URL`, the bot falls back to in-memory state (development only).
 - **Browser auth** — [`agent/channels/eve.ts`](agent/channels/eve.ts) uses `localDev()` and `none()` so local dev is open until real auth is wired ([`src/lib/auth-stub.ts`](src/lib/auth-stub.ts) is a placeholder).
 
+## Settings
+
+The settings shell at [`/settings`](src/app/settings/layout.tsx) groups routes into **Runtime** (live probes) and **Behavior** (preview scaffolds):
+
+| Route | Group | What it shows |
+| --- | --- | --- |
+| [`/settings`](src/app/settings/page.tsx) | Runtime | Connector status, Redis probe, missing env var names |
+| [`/settings/agents`](src/app/settings/agents/page.tsx) | Runtime | eve health, subagent tool readiness |
+| [`/settings/souls`](src/app/settings/souls/page.tsx) | Behavior | Soul profiles (instructions / tone) — **preview only** |
+| [`/settings/skills`](src/app/settings/skills/page.tsx) | Behavior | `load_skill` markdown scoped per agent — **preview only** |
+| [`/settings/knowledge`](src/app/settings/knowledge/page.tsx) | Behavior | xAI Collections mock — **preview only** |
+| [`/settings/voice`](src/app/settings/voice/page.tsx) | Behavior | Grok Voice persona / voice / speed — **preview only** |
+
+**Runtime** tabs poll [`GET /api/status`](src/app/api/status/route.ts) with optional `?sections=system,agents,connectors`. **Behavior** tabs use client-side mock state via `SettingsDraftProvider` — sticky save bar and Sonner toasts; changes are not persisted to eve, xAI, or Railway until phase 2. Field → runtime mappings live in [`settings-runtime-contract.ts`](src/lib/settings-runtime-contract.ts); mock defaults in [`settings-mock/`](src/lib/settings-mock/).
+
 ## Web UI
 
 The browser chat at `/` uses [AI Elements](https://elements.ai-sdk.dev/components) and shadcn/ui:
@@ -86,8 +106,40 @@ The browser chat at `/` uses [AI Elements](https://elements.ai-sdk.dev/component
 - **Composer** — model picker (models from [`chat-config.ts`](src/lib/chat-config.ts)), web-search toggle, and file attachments; attaching files auto-switches to a vision-capable model when needed ([`prompt-area.tsx`](src/components/chat/prompt-area.tsx))
 - **Theme** — system-aware light/dark toggle ([`theme-toggle.tsx`](src/components/chat/theme-toggle.tsx))
 - **Per-turn options** — `{ model, webSearch }` sent as ephemeral `clientContext` on each message; drives orchestrator model selection and researcher delegation preference
+- **Voice / text toggle** — header switch in [`chat-header.tsx`](src/components/chat/chat-header.tsx)
+- **Voice panel** — AI Elements `Persona`, `MicSelector`, and live transcripts in [`voice-mode-panel.tsx`](src/components/chat/voice-mode-panel.tsx)
+- **Collapsed composer** — voice mode hides the text input by default; optional text fallback in [`prompt-area.tsx`](src/components/chat/prompt-area.tsx)
+- **SpeechInput** — browser STT where supported; MediaRecorder audio posts to [`/api/transcribe`](src/app/api/transcribe/route.ts) on Firefox/Safari
+- **Grok Voice sessions** — [`use-grok-voice.ts`](src/hooks/use-grok-voice.ts) connects via Railway proxy when `NEXT_PUBLIC_VOICE_PROXY_URL` is set
 
 The shell is wired in [`eve-chat-shell.tsx`](src/components/chat/eve-chat-shell.tsx) and [`eve-message-list.tsx`](src/components/chat/eve-message-list.tsx).
+
+## Voice mode
+
+Grok Voice realtime sessions use a Railway WebSocket proxy — the browser never holds your xAI API key directly.
+
+```mermaid
+sequenceDiagram
+  participant Browser
+  participant NextAPI as Next_api_voice_session
+  participant Proxy as Railway_voice_proxy
+  participant XAI as xAI_realtime
+
+  Browser->>NextAPI: POST agentId sessionId
+  NextAPI->>XAI: Mint ephemeral client_secret
+  NextAPI->>Browser: xaiToken plus HMAC gateToken
+  Browser->>Proxy: WebSocket with tokens
+  Proxy->>XAI: Authenticated realtime stream
+```
+
+### Deploy the voice proxy
+
+1. Create a **new** Railway service from [`services/voice-proxy/`](services/voice-proxy/) ([`railway.toml`](services/voice-proxy/railway.toml) — Railpack build, `/health` check). Never reuse or modify the fieldflow service at `voice.tradecraft.nexus`.
+2. Set Railway variables: `XAI_API_KEY`, `VOICE_PROXY_SHARED_SECRET`, `ALLOWED_ORIGINS` (your Vercel app + `http://localhost:3000`), optional `XAI_REALTIME_MODEL`, optional Upstash `KV_REST_API_URL` / `KV_REST_API_TOKEN` for connection limits.
+3. Set Vercel/local variables: `XAI_API_KEY`, `NEXT_PUBLIC_VOICE_PROXY_URL`, `VOICE_PROXY_SHARED_SECRET` (must match Railway).
+4. Open the chat UI → header **Voice mode** → **Connect**. The settings preview at `/settings/voice` does not affect live sessions until phase 2.
+
+`services/voice-proxy/dist/` is gitignored — Railway builds from `src/`.
 
 ## Environment variables
 
@@ -98,6 +150,11 @@ The shell is wired in [`eve-chat-shell.tsx`](src/components/chat/eve-chat-shell.
 | `TAVILY_API_KEY` | No | Enables researcher `search_web` tool via Tavily |
 | `REDIS_URL` | Production | Chat SDK subscriptions and distributed locks; dev falls back to in-memory state |
 | `BOT_USERNAME` | No | Chat SDK bot display name (default: `basic-ai-agent`) |
+| `XAI_API_KEY` | Voice only | xAI realtime tokens + `/api/transcribe` STT |
+| `NEXT_PUBLIC_VOICE_PROXY_URL` | Voice only | Public Railway proxy URL (client WebSocket) |
+| `VOICE_PROXY_SHARED_SECRET` | Voice only | HMAC gate between Next.js and proxy |
+| `ALLOWED_ORIGINS` | Railway proxy | CORS allowlist (Vercel app + `http://localhost:3000`) |
+| `XAI_REALTIME_MODEL` | No | Default `grok-voice-think-fast-1.0` on proxy |
 | Platform vars | Per adapter | Enable Slack, Telegram, WhatsApp, Messenger, X, Google Chat, GitHub, Sendblue, Discord, Teams, Linear, or Resend conditionally |
 
 See [`.env.example`](.env.example) for the full list. The placeholder `REDIS_URL` in `.env.example` is ignored intentionally — [`agent/channels/chat-sdk.ts`](agent/channels/chat-sdk.ts) detects example values and falls back to in-memory state.
@@ -109,7 +166,13 @@ See [`.env.example`](.env.example) for the full list. The placeholder `REDIS_URL
 | Web chat UI | `/` |
 | Connector settings | `/settings` |
 | Agents & Tools settings | `/settings/agents` |
+| Souls settings | `/settings/souls` |
+| Skills settings | `/settings/skills` |
+| Knowledge settings | `/settings/knowledge` |
+| Voice settings | `/settings/voice` |
 | Status API | `/api/status?sections=system,agents,connectors` |
+| Voice session mint | `POST /api/voice/session` |
+| Speech STT fallback | `POST /api/transcribe` |
 | eve HTTP API | `/eve/v1/session` |
 | Slack webhook | `/api/webhooks/slack` |
 | Telegram webhook | `/api/webhooks/telegram` |
@@ -273,7 +336,8 @@ See the [Resend adapter docs](https://chat-sdk.dev/adapters/vendor-official/rese
 agent/                          # eve agent (source of truth)
   agent.ts                      # Dynamic model from UI clientContext
   instructions.md               # Orchestrator system prompt
-  skills/                       # Orchestrator load-on-demand skills
+  skills/
+    ai-elements/                # AI Elements reference skill (~129 files)
   lib/                          # Shared helpers (Tavily, fetch-page, project-files, connectors)
   tools/                        # disableTool() overrides at root (incl. agent self-copy)
   subagents/
@@ -285,25 +349,36 @@ agent/                          # eve agent (source of truth)
   channels/
     chat-sdk.ts                 # Platform webhooks + Redis/memory state
     eve.ts                      # Browser HTTP channel auth
+services/
+  voice-proxy/                  # Grok Voice WebSocket proxy (Railway)
+    src/                        # server.ts, proxy-handler.ts, xai-config.ts
+    railway.toml
 src/
   app/
     page.tsx                    # Web chat page
-    settings/
-      layout.tsx                # Tabbed settings shell
-      page.tsx                  # Connector status dashboard
-      agents/page.tsx           # Agents & Tools status dashboard
+    settings/                   # All six settings routes (Runtime + Behavior)
     api/
       status/                   # Unified live status API
+      voice/                    # Session token mint
+      transcribe/               # xAI STT fallback
       connectors/status/        # Legacy connector slice (thin re-export)
   components/
     ai-elements/                # Vercel AI Elements
     chat/
-      eve-chat-shell.tsx        # useEveAgent shell
-      eve-message-list.tsx      # Roster, subagent activity, messages
+      eve-chat-shell.tsx        # useEveAgent shell + voice mode
+      eve-message-list.tsx      # Roster, subagent activity, messages, voice panel
+      voice-mode-panel.tsx      # Persona, MicSelector, transcripts
       prompt-area.tsx           # Model picker, search toggle, attachments
-    settings/                   # Settings dashboards + live status components
+    settings/                   # Settings dashboards + draft context
     ui/                         # shadcn/ui primitives
+  hooks/
+    use-grok-voice.ts           # Grok Voice realtime hook
   lib/
+    voice/                      # persona-state, runtime, settings-resolver
+    voice-client/               # GrokVoiceClient protocol
+    audio/                      # Web Audio capture/playback
+    settings-mock/              # Behavior tab seed data
+    settings-runtime-contract.ts
     agent-meta.ts               # Shared agent labels/icons
     chat-config.ts              # Model list and defaults
     eve-host.ts                 # Local eve dev host resolver
@@ -328,4 +403,5 @@ next.config.ts                  # withEve()
 - [eve Documentation](https://eve.dev/docs) — also available locally in `node_modules/eve/docs/`
 - [Chat SDK Documentation](https://chat-sdk.dev/docs)
 - [AI Elements Documentation](https://elements.ai-sdk.dev/docs)
+- [AI Elements skill](agent/skills/ai-elements/SKILL.md) — bundled component reference and demo scripts
 - [Adapter Setup Guides](https://chat-sdk.dev/adapters)
