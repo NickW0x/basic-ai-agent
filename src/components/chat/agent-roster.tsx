@@ -1,34 +1,26 @@
 "use client";
 
+import {
+  readinessLabel,
+  readinessStatus,
+  StatusBadge,
+} from "@/components/settings/status-badge";
+import { AGENT_META } from "@/lib/agent-meta";
+import type { AgentsStatusSlice } from "@/lib/status-types";
 import { Badge } from "@/components/ui/badge";
-import { BotIcon, BrainCircuitIcon, CalculatorIcon, SearchIcon } from "lucide-react";
+import { BotIcon } from "lucide-react";
 
-const AGENTS = [
-  {
-    id: "orchestrator",
-    label: "Orchestrator",
-    description: "Routes tasks and synthesizes replies",
-    icon: BrainCircuitIcon,
-    variant: "default" as const,
-  },
-  {
-    id: "researcher",
-    label: "Researcher",
-    description: "Web search, news, and weather",
-    icon: SearchIcon,
-    variant: "secondary" as const,
-  },
-  {
-    id: "analyst",
-    label: "Analyst",
-    description: "Math and calculations",
-    icon: CalculatorIcon,
-    variant: "secondary" as const,
-  },
-];
+interface AgentRosterProps {
+  agents?: AgentsStatusSlice;
+}
 
-// Always-visible roster so the multi-agent architecture is obvious in the UI.
-export function AgentRoster() {
+export function AgentRoster({ agents }: AgentRosterProps) {
+  const statusById = new Map(
+    agents?.specialists.map((agent) => [agent.id, agent.readiness]) ?? [],
+  );
+
+  const orchestratorReadiness = agents?.orchestrator.readiness ?? "ready";
+
   return (
     <section className="rounded-xl border bg-card p-4 shadow-sm">
       <div className="mb-3 flex items-center gap-2">
@@ -38,9 +30,13 @@ export function AgentRoster() {
           eve + Chat SDK
         </Badge>
       </div>
-      <div className="grid gap-2 sm:grid-cols-3">
-        {AGENTS.map((agent) => {
+      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+        {AGENT_META.map((agent) => {
           const Icon = agent.icon;
+          const readiness =
+            agent.id === "orchestrator"
+              ? orchestratorReadiness
+              : (statusById.get(agent.id) ?? "ready");
 
           return (
             <div
@@ -50,9 +46,14 @@ export function AgentRoster() {
               <div className="flex items-center gap-2">
                 <Icon className="size-4 text-muted-foreground" />
                 <span className="font-medium text-sm">{agent.label}</span>
+                <StatusBadge
+                  label={readinessLabel(readiness)}
+                  status={readinessStatus(readiness)}
+                />
               </div>
               <p className="mt-1 text-muted-foreground text-xs">
-                {agent.description}
+                {agents?.specialists.find((entry) => entry.id === agent.id)
+                  ?.description ?? agent.description}
               </p>
             </div>
           );

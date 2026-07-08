@@ -19,14 +19,20 @@ Requires **Node 24+**.
 agent/
   agent.ts                    # Root runtime config (model, limits)
   instructions.md             # Orchestrator system prompt
-  tools/                      # Root tools
-  subagents/                  # Specialist agents (researcher, analyst)
+  skills/                     # Orchestrator skills (load_skill)
+  tools/                      # Root tools (disableTool overrides)
+  subagents/                  # researcher, analyst, summarizer, coder, marketer
   channels/
-    chat-sdk.ts               # Slack, Telegram, WhatsApp, GChat, GitHub
+    chat-sdk.ts               # Slack, Telegram, WhatsApp, Messenger, X, GChat, GitHub, Sendblue, Discord, Teams, Linear, Resend
     eve.ts                    # Browser HTTP channel auth
 src/
   app/page.tsx                # Web chat UI (useEveAgent + AI Elements)
-  components/chat/            # Eve shell, message list, subagent badges
+  app/settings/               # Tabbed settings (Connectors | Agents & Tools)
+  app/api/status/             # Unified live status API
+  components/chat/            # Eve shell, message list, subagent badges, system health
+  components/settings/        # Status dashboards, polling, Redis card
+  lib/agent-meta.ts           # Shared agent roster metadata
+  lib/resolve-eve-origin.ts   # Eve origin resolver for probes
   lib/eve-host.ts             # Local eve dev server origin helper
 .env.example                  # Required environment variables
 next.config.ts                # withEve() wraps Next.js config
@@ -36,13 +42,15 @@ next.config.ts                # withEve() wraps Next.js config
 
 1. **Web UI** at `/` uses `useEveAgent` to talk to eve over `/eve/v1/session`.
 2. **Platform messengers** send webhooks to `/api/webhooks/{platform}`; eve's Chat SDK channel in `agent/channels/chat-sdk.ts` handles verification, parsing, and routing.
-3. The **orchestrator** in `agent/instructions.md` delegates to subagents (`researcher`, `analyst`) for focused work.
+3. The **orchestrator** in `agent/instructions.md` delegates to subagents (`researcher`, `analyst`, `summarizer`, `coder`, `marketer`) for focused work.
 4. `withEve()` in `next.config.ts` runs the Next.js app and eve agent runtime together.
+5. **Settings dashboards** at `/settings` and `/settings/agents` poll `GET /api/status` for live Redis PING, eve health, and tool readiness.
 
 ## Key concepts
 
-- **eve agent** — filesystem-first agent definition under `agent/` (instructions, tools, subagents, channels).
-- **Subagents** — declared specialists with their own instructions and tools.
+- **eve agent** — filesystem-first agent definition under `agent/` (instructions, tools, subagents, skills, channels).
+- **Subagents** — declared specialists with their own instructions, tools, and optional skills.
+- **Skills** — load-on-demand procedures via `load_skill` (scoped per agent; see `node_modules/eve/docs/skills.mdx`).
 - **Channels** — entry points for web (`eve`) and chat platforms (`chat-sdk`).
 - **State adapter** — Redis (production) or in-memory (dev) for Chat SDK thread subscriptions.
 - **Durable sessions** — eve runtime uses Vercel Workflows in production; local dev persists under `.workflow-data/` (gitignored).
@@ -62,5 +70,7 @@ Start with:
 
 - `node_modules/eve/docs/README.md`
 - `node_modules/eve/docs/getting-started.mdx`
+- `node_modules/eve/docs/skills.mdx`
+- `node_modules/eve/docs/subagents.mdx`
 - `node_modules/chat/docs/platform-adapters.mdx`
 - `node_modules/chat/docs/state-adapters.mdx`

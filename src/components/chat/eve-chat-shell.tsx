@@ -5,6 +5,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { ChatHeader } from "@/components/chat/chat-header";
 import { ComposerDock } from "@/components/chat/composer-dock";
 import { EveMessageList } from "@/components/chat/eve-message-list";
+import { useStatusPoll } from "@/components/settings/use-status-poll";
 import type { UserContent } from "ai";
 import { useEveAgent } from "eve/react";
 import { AlertCircleIcon } from "lucide-react";
@@ -41,6 +42,11 @@ function buildUserContent(message: PromptInputMessage): string | UserContent {
 }
 
 export function EveChatShell({ eveHost = "" }: EveChatShellProps) {
+  const statusPoll = useStatusPoll({
+    sections: ["system", "agents"],
+    intervalMs: 30_000,
+  });
+
   const agent = useEveAgent({
     host: eveHost,
     onError: (error) => {
@@ -73,7 +79,10 @@ export function EveChatShell({ eveHost = "" }: EveChatShellProps) {
 
   return (
     <main className="flex h-dvh flex-col bg-background">
-      <ChatHeader status={agent.status} />
+      <ChatHeader
+        status={agent.status}
+        systemHealth={statusPoll.data?.system?.health}
+      />
       {agent.error ? (
         <div className="shrink-0 px-4 pt-3 md:px-6">
           <Alert variant="destructive">
@@ -84,6 +93,7 @@ export function EveChatShell({ eveHost = "" }: EveChatShellProps) {
         </div>
       ) : null}
       <EveMessageList
+        agents={statusPoll.data?.agents}
         events={agent.events}
         messages={agent.data.messages}
         status={agent.status}

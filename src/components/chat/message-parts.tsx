@@ -29,6 +29,14 @@ interface MessagePartsProps {
   isStreaming?: boolean;
 }
 
+const SUBAGENT_DISPLAY_NAMES: Record<string, string> = {
+  researcher: "Researcher subagent",
+  analyst: "Analyst subagent",
+  summarizer: "Summarizer subagent",
+  coder: "Coder subagent",
+  marketer: "Marketer subagent",
+};
+
 function formatToolOutput(output: ToolUIPart["output"]): string {
   if (output == null) {
     return "";
@@ -67,6 +75,52 @@ function formatToolOutput(output: ToolUIPart["output"]): string {
       .join("\n");
   }
 
+  if ("variants" in record && Array.isArray(record.variants)) {
+    return record.variants
+      .map(
+        (variant: {
+          platform?: string;
+          text?: string;
+          charCount?: number;
+          limit?: number;
+          withinLimit?: boolean;
+        }) => {
+          const platform = variant.platform ?? "unknown";
+          const text = variant.text ?? "";
+          const count = variant.charCount ?? text.length;
+          const limit = variant.limit ?? "?";
+          const status = variant.withinLimit ? "ok" : "truncated";
+          return `- **${platform}** (${count}/${limit}, ${status}): ${text}`;
+        },
+      )
+      .join("\n\n");
+  }
+
+  if ("matches" in record && Array.isArray(record.matches)) {
+    return record.matches
+      .map(
+        (match: { path?: string; line?: number; text?: string }) =>
+          `- \`${match.path}:${match.line}\` ${match.text ?? ""}`,
+      )
+      .join("\n");
+  }
+
+  if ("files" in record && Array.isArray(record.files)) {
+    return record.files.map((file: string) => `- \`${file}\``).join("\n");
+  }
+
+  if ("path" in record && "content" in record) {
+    const path = String(record.path);
+    const start = record.startLine ? `:${record.startLine}` : "";
+    const end = record.endLine ? `-${record.endLine}` : "";
+    return `**\`${path}${start}${end}\`**\n\n\`\`\`\n${String(record.content)}\n\`\`\``;
+  }
+
+  if ("text" in record && "url" in record) {
+    const title = record.title ? `**${String(record.title)}**\n\n` : "";
+    return `${title}${String(record.text).slice(0, 2000)}`;
+  }
+
   return JSON.stringify(output, null, 2);
 }
 
@@ -97,11 +151,7 @@ export function MessageParts({ message, isStreaming }: MessagePartsProps) {
         if (isToolUIPart(part)) {
           const toolName = getToolName(part);
           const displayName =
-            toolName === "researcher"
-              ? "Researcher subagent"
-              : toolName === "analyst"
-                ? "Analyst subagent"
-                : toolName;
+            SUBAGENT_DISPLAY_NAMES[toolName] ?? toolName;
 
           const toolHeaderProps =
             part.type === "dynamic-tool"
