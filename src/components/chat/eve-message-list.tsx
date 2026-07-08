@@ -7,11 +7,14 @@ import {
   ConversationScrollButton,
 } from "@/components/ai-elements/conversation";
 import { Message, MessageContent } from "@/components/ai-elements/message";
-import { AgentRoster } from "@/components/chat/agent-roster";
 import { CHAT_CONTENT_CLASS } from "@/components/chat/chat-layout";
 import { MessageParts } from "@/components/chat/message-parts";
 import { SubagentActivity } from "@/components/chat/subagent-activity";
-import type { AgentsStatusSlice } from "@/lib/status-types";
+import {
+  VoiceModePanel,
+  type VoiceTranscriptLine,
+} from "@/components/chat/voice-mode-panel";
+import type { PersonaState } from "@/components/ai-elements/persona";
 import type { UIMessage } from "ai";
 import type { EveMessage, UseEveAgentStatus } from "eve/react";
 import { MessageSquareIcon } from "lucide-react";
@@ -20,14 +23,32 @@ interface EveMessageListProps {
   messages: readonly EveMessage[];
   status: UseEveAgentStatus;
   events: readonly import("eve/client").HandleMessageStreamEvent[];
-  agents?: AgentsStatusSlice;
+  voiceMode?: boolean;
+  personaState?: PersonaState;
+  voiceEnabled?: boolean;
+  voiceConnected?: boolean;
+  isVoiceConnecting?: boolean;
+  onVoiceConnect?: () => void;
+  onVoiceDisconnect?: () => void;
+  transcripts?: VoiceTranscriptLine[];
+  selectedMicId?: string;
+  onMicChange?: (deviceId: string | undefined) => void;
 }
 
 export function EveMessageList({
   messages,
   status,
   events,
-  agents,
+  voiceMode = false,
+  personaState = "idle",
+  voiceEnabled = false,
+  voiceConnected = false,
+  isVoiceConnecting = false,
+  onVoiceConnect,
+  onVoiceDisconnect,
+  transcripts = [],
+  selectedMicId,
+  onMicChange,
 }: EveMessageListProps) {
   const isStreaming = status === "streaming" || status === "submitted";
   const lastMessage = messages.at(-1);
@@ -36,16 +57,40 @@ export function EveMessageList({
     <Conversation className="flex-1">
       <ConversationContent className={`${CHAT_CONTENT_CLASS} py-6`}>
         {messages.length === 0 ? (
-          <div className="space-y-6">
-            <AgentRoster agents={agents} />
+          voiceMode ? (
+            <VoiceModePanel
+              isConnecting={isVoiceConnecting}
+              onConnect={onVoiceConnect}
+              onDisconnect={onVoiceDisconnect}
+              onMicChange={onMicChange}
+              personaState={personaState}
+              selectedMicId={selectedMicId}
+              transcripts={transcripts}
+              voiceConnected={voiceConnected}
+              voiceEnabled={voiceEnabled}
+            />
+          ) : (
             <ConversationEmptyState
-              description="Try: “Summarize this article…” · “What subagents exist?” · “Draft 3 X posts for our bot” · “What's the weather in Tokyo?”"
               icon={<MessageSquareIcon className="size-10" />}
               title="Multi-agent chat"
             />
-          </div>
+          )
         ) : (
           <>
+            {voiceMode ? (
+              <VoiceModePanel
+                compact
+                isConnecting={isVoiceConnecting}
+                onConnect={onVoiceConnect}
+                onDisconnect={onVoiceDisconnect}
+                onMicChange={onMicChange}
+                personaState={personaState}
+                selectedMicId={selectedMicId}
+                transcripts={transcripts}
+                voiceConnected={voiceConnected}
+                voiceEnabled={voiceEnabled}
+              />
+            ) : null}
             <SubagentActivity events={events} />
             {messages.map((message) => (
               <Message from={message.role} key={message.id}>

@@ -10,6 +10,8 @@ type ComposerStatus = ChatStatus | UseEveAgentStatus;
 
 interface ComposerDockProps {
   status: ComposerStatus;
+  voiceMode?: boolean;
+  onListeningChange?: (isListening: boolean) => void;
   onSubmit: (
     message: PromptInputMessage,
     options: { model: string; webSearch: boolean },
@@ -17,11 +19,23 @@ interface ComposerDockProps {
   onStop: () => void;
 }
 
-export function ComposerDock({ status, onSubmit, onStop }: ComposerDockProps) {
+export function ComposerDock({
+  status,
+  voiceMode = false,
+  onListeningChange,
+  onSubmit,
+  onStop,
+}: ComposerDockProps) {
   return (
     <footer className="shrink-0 border-t bg-background pb-[env(safe-area-inset-bottom)]">
       <div className={`${CHAT_CONTENT_CLASS} py-4`}>
-        <PromptArea onStop={onStop} onSubmit={onSubmit} status={status} />
+        <PromptArea
+          onListeningChange={onListeningChange}
+          onStop={onStop}
+          onSubmit={onSubmit}
+          status={status}
+          voiceMode={voiceMode}
+        />
       </div>
     </footer>
   );

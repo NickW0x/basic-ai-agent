@@ -1,19 +1,22 @@
 "use client";
 
 import { ThemeToggle } from "@/components/chat/theme-toggle";
-import { HealthBadge } from "@/components/settings/status-badge";
-import { SystemHealthBadge } from "@/components/chat/system-health-badge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { SPECIALIST_SUBTITLE } from "@/lib/agent-meta";
-import type { AggregateHealth } from "@/lib/status-types";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { cn } from "@/lib/utils";
 import type { UseEveAgentStatus } from "eve/react";
-import { NetworkIcon, SettingsIcon } from "lucide-react";
+import { KeyboardIcon, MicIcon, SettingsIcon } from "lucide-react";
 import Link from "next/link";
 
 interface ChatHeaderProps {
   status?: UseEveAgentStatus;
-  systemHealth?: AggregateHealth;
+  voiceMode?: boolean;
+  onVoiceModeChange?: (enabled: boolean) => void;
 }
 
 function sessionStatusLabel(status: UseEveAgentStatus | undefined): string {
@@ -29,34 +32,67 @@ function sessionStatusLabel(status: UseEveAgentStatus | undefined): string {
   }
 }
 
-export function ChatHeader({ status, systemHealth }: ChatHeaderProps) {
+function SessionIndicator({ status }: { status?: UseEveAgentStatus }) {
+  const label = sessionStatusLabel(status);
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span
+          aria-label={label}
+          className={cn(
+            "inline-block size-2 shrink-0 rounded-full",
+            status === "error" && "bg-destructive",
+            status === "streaming" && "animate-pulse bg-primary",
+            status === "submitted" && "animate-pulse bg-amber-500",
+            (!status || status === "ready") && "bg-muted-foreground/40",
+          )}
+          role="status"
+        />
+      </TooltipTrigger>
+      <TooltipContent side="bottom">{label}</TooltipContent>
+    </Tooltip>
+  );
+}
+
+export function ChatHeader({
+  status,
+  voiceMode = false,
+  onVoiceModeChange,
+}: ChatHeaderProps) {
   return (
     <header className="flex shrink-0 items-center justify-between border-b px-4 py-3 md:px-6">
-      <div>
-        <div className="flex flex-wrap items-center gap-2">
-          <h1 className="font-semibold text-lg tracking-tight">
-            Multi-Agent Assistant
-          </h1>
-          <Badge className="gap-1" variant="secondary">
-            <NetworkIcon className="size-3" />
-            eve
+      <div className="flex items-center gap-2.5">
+        <h1 className="font-semibold text-lg tracking-tight">
+          Multi-Agent Assistant
+        </h1>
+        <SessionIndicator status={status} />
+        {voiceMode ? (
+          <Badge className="text-xs" variant="secondary">
+            Voice
           </Badge>
-          {systemHealth ? (
-            <HealthBadge health={systemHealth} />
-          ) : (
-            <SystemHealthBadge />
-          )}
-          {status ? (
-            <Badge variant={status === "error" ? "destructive" : "outline"}>
-              Session: {sessionStatusLabel(status)}
-            </Badge>
-          ) : null}
-        </div>
-        <p className="text-muted-foreground text-sm">
-          Orchestrator · {SPECIALIST_SUBTITLE}
-        </p>
+        ) : null}
       </div>
       <div className="flex items-center gap-2">
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              aria-label={voiceMode ? "Switch to text mode" : "Switch to voice mode"}
+              onClick={() => onVoiceModeChange?.(!voiceMode)}
+              size="icon-sm"
+              variant={voiceMode ? "default" : "ghost"}
+            >
+              {voiceMode ? (
+                <KeyboardIcon className="size-4" />
+              ) : (
+                <MicIcon className="size-4" />
+              )}
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom">
+            {voiceMode ? "Text mode" : "Voice mode"}
+          </TooltipContent>
+        </Tooltip>
         <Button asChild size="icon-sm" variant="ghost">
           <Link aria-label="Settings" href="/settings">
             <SettingsIcon className="size-4" />

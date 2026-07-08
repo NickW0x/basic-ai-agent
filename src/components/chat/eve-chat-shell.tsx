@@ -5,11 +5,18 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { ChatHeader } from "@/components/chat/chat-header";
 import { ComposerDock } from "@/components/chat/composer-dock";
 import { EveMessageList } from "@/components/chat/eve-message-list";
-import { useStatusPoll } from "@/components/settings/use-status-poll";
+import type { VoiceTranscriptLine } from "@/components/chat/voice-mode-panel";
+import { useGrokVoice } from "@/hooks/use-grok-voice";
+import { derivePersonaState } from "@/lib/voice/persona-state";
+import { isVoiceRuntimeEnabled } from "@/lib/voice/runtime";
 import type { UserContent } from "ai";
+import type { EveMessage } from "eve/react";
 import { useEveAgent } from "eve/react";
 import { AlertCircleIcon } from "lucide-react";
-import { useCallback } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
+
+const VOICE_MODE_STORAGE_KEY = "eve-voice-mode";
 
 interface EveChatShellProps {
   eveHost?: string;
@@ -41,11 +48,30 @@ function buildUserContent(message: PromptInputMessage): string | UserContent {
   return parts;
 }
 
+function readVoiceModePreference(): boolean {
+  if (typeof window === "undefined") {
+    return false;
+  }
+  return sessionStorage.getItem(VOICE_MODE_STORAGE_KEY) === "true";
+}
+
+function getMessageText(message: EveMessage): string {
+  return message.parts
+    .filter((part) => part.type === "text")
+    .map((part) => ("text" in part ? part.text : ""))
+    .join(" ");
+}
+
 export function EveChatShell({ eveHost = "" }: EveChatShellProps) {
-  const statusPoll = useStatusPoll({
-    sections: ["system", "agents"],
-    intervalMs: 30_000,
-  });
+  const [voiceMode, setVoiceMode] = useState(false);
+  const [isSpeechListening, setIsSpeechListening] = useState(false);
+  const [isVoiceConnecting, setIsVoiceConnecting] = useState(false);
+  const [voiceTranscripts, setVoiceTranscripts] = useState<VoiceTranscriptLine[]>(
+    [],
+  );
+  const [selectedMicId, setSelectedMicId] = useState<string | undefined>();
+
+  const voiceRuntimeEnabled = isVoiceRuntimeEnabled();
 
   const agent = useEveAgent({
     host: eveHost,
@@ -53,6 +79,84 @@ export function EveChatShell({ eveHost = "" }: EveChatShellProps) {
       console.error("[eve]", error);
     },
   });
+
+  const conversationHistory = useMemo(
+    () =>
+      agent.data.messages
+        .filter((message) => message.role === "user" || message.role === "assistant")
+        .slice(-10)
+        .map((message) => ({
+          role: message.role,
+          content: getMessageText(message),
+        }))
+        .filter((message) => message.content.length > 0),
+    [agent.data.messages],
+  );
+
+  const handleVoiceTranscript = useCallback(
+    (text: string, isFinal: boolean, speaker?: "user" | "assistant") => {
+      if (!isFinal || !text.trim()) {
+        return;
+      }
+      setVoiceTranscripts((current) => [
+        ...current.slice(-19),
+        {
+          id: `${Date.now()}-${speaker ?? "assistant"}`,
+          speaker: speaker ?? "assistant",
+          text: text.trim(),
+        },
+      ]);
+    },
+    [],
+  );
+
+  const grokVoice = useGrokVoice({
+    conversationHistory,
+    enabled: voiceMode && voiceRuntimeEnabled,
+    onTranscript: handleVoiceTranscript,
+  });
+
+  useEffect(() => {
+    setVoiceMode(readVoiceModePreference());
+  }, []);
+
+  const handleVoiceModeChange = useCallback(
+    (enabled: boolean) => {
+      setVoiceMode(enabled);
+      sessionStorage.setItem(VOICE_MODE_STORAGE_KEY, String(enabled));
+      if (!enabled) {
+        setIsSpeechListening(false);
+        grokVoice.disconnect();
+        setVoiceTranscripts([]);
+      }
+    },
+    [grokVoice],
+  );
+
+  const personaState = useMemo(
+    () =>
+      derivePersonaState({
+        agentStatus: agent.status,
+        isAssistantSpeaking: grokVoice.isSpeaking,
+        isListening: grokVoice.isConnected
+          ? grokVoice.isListening || grokVoice.isRecording
+          : isSpeechListening,
+        isUserSpeaking: grokVoice.isListening || grokVoice.isRecording,
+        isVoiceProcessing: grokVoice.isProcessing,
+        voiceConnected: grokVoice.isConnected,
+        voiceMode,
+      }),
+    [
+      agent.status,
+      grokVoice.isConnected,
+      grokVoice.isListening,
+      grokVoice.isProcessing,
+      grokVoice.isRecording,
+      grokVoice.isSpeaking,
+      isSpeechListening,
+      voiceMode,
+    ],
+  );
 
   const handleSubmit = useCallback(
     (
@@ -77,11 +181,36 @@ export function EveChatShell({ eveHost = "" }: EveChatShellProps) {
     [agent],
   );
 
+  const handleVoiceConnect = useCallback(async () => {
+    if (!voiceRuntimeEnabled) {
+      toast.error("Voice proxy is not configured");
+      return;
+    }
+
+    setIsVoiceConnecting(true);
+    try {
+      await grokVoice.connect();
+      toast.success("Voice session connected");
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Failed to connect voice session",
+      );
+    } finally {
+      setIsVoiceConnecting(false);
+    }
+  }, [grokVoice, voiceRuntimeEnabled]);
+
+  const handleVoiceDisconnect = useCallback(() => {
+    grokVoice.disconnect();
+    setVoiceTranscripts([]);
+  }, [grokVoice]);
+
   return (
     <main className="flex h-dvh flex-col bg-background">
       <ChatHeader
+        onVoiceModeChange={handleVoiceModeChange}
         status={agent.status}
-        systemHealth={statusPoll.data?.system?.health}
+        voiceMode={voiceMode}
       />
       {agent.error ? (
         <div className="shrink-0 px-4 pt-3 md:px-6">
@@ -93,15 +222,26 @@ export function EveChatShell({ eveHost = "" }: EveChatShellProps) {
         </div>
       ) : null}
       <EveMessageList
-        agents={statusPoll.data?.agents}
         events={agent.events}
+        isVoiceConnecting={isVoiceConnecting}
         messages={agent.data.messages}
+        onMicChange={setSelectedMicId}
+        onVoiceConnect={() => void handleVoiceConnect()}
+        onVoiceDisconnect={handleVoiceDisconnect}
+        personaState={personaState}
+        selectedMicId={selectedMicId}
         status={agent.status}
+        transcripts={voiceTranscripts}
+        voiceConnected={grokVoice.isConnected}
+        voiceEnabled={voiceRuntimeEnabled}
+        voiceMode={voiceMode}
       />
       <ComposerDock
+        onListeningChange={setIsSpeechListening}
         onStop={agent.stop}
         onSubmit={handleSubmit}
         status={agent.status}
+        voiceMode={voiceMode}
       />
     </main>
   );

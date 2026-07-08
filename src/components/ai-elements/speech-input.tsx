@@ -61,6 +61,8 @@ type SpeechInputMode = "speech-recognition" | "media-recorder" | "none";
 
 export type SpeechInputProps = ComponentProps<typeof Button> & {
   onTranscriptionChange?: (text: string) => void;
+  /** Fired when listening state changes (mic on/off). */
+  onListeningChange?: (isListening: boolean) => void;
   /**
    * Callback for when audio is recorded using MediaRecorder fallback.
    * This is called in browsers that don't support the Web Speech API (Firefox, Safari).
@@ -90,6 +92,7 @@ const detectSpeechInputMode = (): SpeechInputMode => {
 export const SpeechInput = ({
   className,
   onTranscriptionChange,
+  onListeningChange,
   onAudioRecorded,
   lang = "en-US",
   ...props
@@ -107,10 +110,13 @@ export const SpeechInput = ({
   >(onTranscriptionChange);
   const onAudioRecordedRef =
     useRef<SpeechInputProps["onAudioRecorded"]>(onAudioRecorded);
+  const onListeningChangeRef =
+    useRef<SpeechInputProps["onListeningChange"]>(onListeningChange);
 
   // Keep refs in sync
   onTranscriptionChangeRef.current = onTranscriptionChange;
   onAudioRecordedRef.current = onAudioRecorded;
+  onListeningChangeRef.current = onListeningChange;
 
   // Initialize Speech Recognition when mode is speech-recognition
   useEffect(() => {
@@ -128,10 +134,12 @@ export const SpeechInput = ({
 
     const handleStart = () => {
       setIsListening(true);
+      onListeningChangeRef.current?.(true);
     };
 
     const handleEnd = () => {
       setIsListening(false);
+      onListeningChangeRef.current?.(false);
     };
 
     const handleResult = (event: Event) => {
@@ -156,6 +164,7 @@ export const SpeechInput = ({
 
     const handleError = () => {
       setIsListening(false);
+      onListeningChangeRef.current?.(false);
     };
 
     speechRecognition.addEventListener("start", handleStart);
@@ -237,6 +246,7 @@ export const SpeechInput = ({
 
       const handleError = () => {
         setIsListening(false);
+        onListeningChangeRef.current?.(false);
         for (const track of stream.getTracks()) {
           track.stop();
         }
@@ -250,8 +260,10 @@ export const SpeechInput = ({
       mediaRecorderRef.current = mediaRecorder;
       mediaRecorder.start();
       setIsListening(true);
+      onListeningChangeRef.current?.(true);
     } catch {
       setIsListening(false);
+      onListeningChangeRef.current?.(false);
     }
   }, []);
 
@@ -261,6 +273,7 @@ export const SpeechInput = ({
       mediaRecorderRef.current.stop();
     }
     setIsListening(false);
+    onListeningChangeRef.current?.(false);
   }, []);
 
   const toggleListening = useCallback(() => {

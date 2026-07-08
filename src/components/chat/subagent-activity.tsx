@@ -54,10 +54,7 @@ export function SubagentActivity({ events }: SubagentActivityProps) {
   }
 
   return (
-    <section className="mb-4 space-y-2">
-      <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
-        Specialist activity
-      </p>
+    <section className="mb-4">
       <div className="flex flex-wrap gap-2">
         {runs.map((run) => (
           <Badge

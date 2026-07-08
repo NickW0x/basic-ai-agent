@@ -25,3 +25,7 @@ skills-lock.json
 .DS_Store
 *.tsbuildinfo
 next-env.d.ts
+
+# voice-proxy build output (Railway builds from src/)
+services/voice-proxy/dist/
+services/voice-proxy/.env

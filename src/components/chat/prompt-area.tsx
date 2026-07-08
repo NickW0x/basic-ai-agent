@@ -20,7 +20,9 @@ import {
   PromptInputTextarea,
   PromptInputTools,
 } from "@/components/ai-elements/prompt-input";
+import { SpeechInput } from "@/components/ai-elements/speech-input";
 import { AttachmentPreviewBar } from "@/components/chat/attachment-preview";
+import { Button } from "@/components/ui/button";
 import {
   CHAT_MODELS,
   DEFAULT_MODEL_ID,
@@ -29,13 +31,16 @@ import {
 } from "@/lib/chat-config";
 import type { ChatStatus } from "ai";
 import type { UseEveAgentStatus } from "eve/react";
-import { GlobeIcon } from "lucide-react";
+import { ChevronDownIcon, ChevronUpIcon, GlobeIcon } from "lucide-react";
 import { useCallback, useState } from "react";
+import { toast } from "sonner";
 
 type ComposerStatus = ChatStatus | UseEveAgentStatus;
 
 interface PromptAreaProps {
   status: ComposerStatus;
+  voiceMode?: boolean;
+  onListeningChange?: (isListening: boolean) => void;
   onSubmit: (
     message: PromptInputMessage,
     options: { model: string; webSearch: boolean },
@@ -43,10 +48,38 @@ interface PromptAreaProps {
   onStop: () => void;
 }
 
-export function PromptArea({ status, onSubmit, onStop }: PromptAreaProps) {
+/** Send recorded audio to server STT for Firefox/Safari fallback. */
+async function transcribeAudioBlob(audioBlob: Blob): Promise<string> {
+  const formData = new FormData();
+  formData.append("file", audioBlob, "audio.webm");
+
+  const response = await fetch("/api/transcribe", {
+    body: formData,
+    method: "POST",
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(
+      (error as { error?: string }).error ?? "Transcription failed",
+    );
+  }
+
+  const data = (await response.json()) as { text?: string };
+  return data.text ?? "";
+}
+
+export function PromptArea({
+  status,
+  voiceMode = false,
+  onListeningChange,
+  onSubmit,
+  onStop,
+}: PromptAreaProps) {
   const [text, setText] = useState("");
   const [model, setModel] = useState(DEFAULT_MODEL_ID);
   const [webSearch, setWebSearch] = useState(false);
+  const [showTextInput, setShowTextInput] = useState(false);
 
   const handleSubmit = useCallback(
     (message: PromptInputMessage) => {
@@ -72,8 +105,30 @@ export function PromptArea({ status, onSubmit, onStop }: PromptAreaProps) {
     [model, onSubmit, webSearch],
   );
 
+  const handleAudioRecorded = useCallback(async (audioBlob: Blob) => {
+    try {
+      return await transcribeAudioBlob(audioBlob);
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Transcription unavailable",
+      );
+      return "";
+    }
+  }, []);
+
+  const handleTranscriptionChange = useCallback(
+    (transcript: string) => {
+      setText((prev) => (prev ? `${prev} ${transcript}` : transcript));
+      onListeningChange?.(false);
+    },
+    [onListeningChange],
+  );
+
   const submitStatus =
     status === "streaming" || status === "submitted" ? status : "ready";
+
+  const isBusy = status === "streaming" || status === "submitted";
+  const showCollapsedComposer = voiceMode && !showTextInput;
 
   return (
     <PromptInput
@@ -85,16 +140,59 @@ export function PromptArea({ status, onSubmit, onStop }: PromptAreaProps) {
       <PromptInputHeader>
         <AttachmentPreviewBar />
       </PromptInputHeader>
-      <PromptInputBody>
-        <PromptInputTextarea
-          disabled={status === "streaming" || status === "submitted"}
-          onChange={(event) => setText(event.currentTarget.value)}
-          placeholder="Ask the agent..."
-          value={text}
-        />
-      </PromptInputBody>
+      {showCollapsedComposer ? (
+        <PromptInputBody>
+          <div className="flex items-center justify-between gap-2 px-3 py-2">
+            <p className="truncate text-muted-foreground text-sm">
+              {text.trim() || "Tap mic to speak, or type a message"}
+            </p>
+            <Button
+              className="shrink-0"
+              onClick={() => setShowTextInput(true)}
+              size="sm"
+              type="button"
+              variant="ghost"
+            >
+              <ChevronUpIcon className="mr-1 size-3.5" />
+              Type instead
+            </Button>
+          </div>
+        </PromptInputBody>
+      ) : (
+        <PromptInputBody>
+          {voiceMode ? (
+            <div className="flex justify-end px-2 pt-1">
+              <Button
+                className="h-7 text-xs"
+                onClick={() => setShowTextInput(false)}
+                size="sm"
+                type="button"
+                variant="ghost"
+              >
+                <ChevronDownIcon className="mr-1 size-3.5" />
+                Collapse
+              </Button>
+            </div>
+          ) : null}
+          <PromptInputTextarea
+            disabled={isBusy}
+            onChange={(event) => setText(event.currentTarget.value)}
+            placeholder={voiceMode ? "Type a message…" : "Ask the agent..."}
+            value={text}
+          />
+        </PromptInputBody>
+      )}
       <PromptInputFooter>
         <PromptInputTools>
+          <SpeechInput
+            className="size-8"
+            disabled={isBusy}
+            onAudioRecorded={handleAudioRecorded}
+            onListeningChange={onListeningChange}
+            onTranscriptionChange={handleTranscriptionChange}
+            size="icon"
+            variant="ghost"
+          />
           <PromptInputActionMenu>
             <PromptInputActionMenuTrigger />
             <PromptInputActionMenuContent>

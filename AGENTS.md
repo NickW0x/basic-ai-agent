@@ -27,10 +27,18 @@ agent/
     eve.ts                    # Browser HTTP channel auth
 src/
   app/page.tsx                # Web chat UI (useEveAgent + AI Elements)
-  app/settings/               # Tabbed settings (Connectors | Agents & Tools)
+  app/settings/               # Sidebar settings (Runtime + Behavior tabs)
+    page.tsx                  # Connectors
+    agents/page.tsx           # Agents & Tools
+    souls/page.tsx            # Soul profiles (instructions / defineDynamic)
+    skills/page.tsx           # eve load_skill scoped markdown
+    knowledge/page.tsx        # xAI Collections + search_knowledge
+    voice/page.tsx            # Grok Voice via Railway proxy (phase 2)
   app/api/status/             # Unified live status API
   components/chat/            # Eve shell, message list, subagent badges, system health
-  components/settings/        # Status dashboards, polling, Redis card
+  components/settings/        # Shell, dashboards, draft context, runtime panels
+  lib/settings-runtime-contract.ts  # Mock field → eve/xAI/Railway replacement hints
+  lib/settings-mock/          # Preview seed data for Behavior tabs
   lib/agent-meta.ts           # Shared agent roster metadata
   lib/resolve-eve-origin.ts   # Eve origin resolver for probes
   lib/eve-host.ts             # Local eve dev server origin helper
@@ -44,7 +52,20 @@ next.config.ts                # withEve() wraps Next.js config
 2. **Platform messengers** send webhooks to `/api/webhooks/{platform}`; eve's Chat SDK channel in `agent/channels/chat-sdk.ts` handles verification, parsing, and routing.
 3. The **orchestrator** in `agent/instructions.md` delegates to subagents (`researcher`, `analyst`, `summarizer`, `coder`, `marketer`) for focused work.
 4. `withEve()` in `next.config.ts` runs the Next.js app and eve agent runtime together.
-5. **Settings dashboards** at `/settings` and `/settings/agents` poll `GET /api/status` for live Redis PING, eve health, and tool readiness.
+5. **Settings dashboards** poll `GET /api/status` where live probes apply (Connectors, Agents). **Behavior tabs** (Souls, Skills, Knowledge, Voice) use client-side mock state via `SettingsDraftProvider` — preview mode with sticky save bar and Sonner toasts; persistence is phase 2.
+
+## Settings (preview scaffold)
+
+| Route | Group | Runtime target (phase 2) |
+|-------|-------|--------------------------|
+| `/settings` | Runtime | Chat SDK connectors + webhooks |
+| `/settings/agents` | Runtime | eve subagents, tools, `/api/status` |
+| `/settings/souls` | Behavior | `agent/instructions.md`, `defineDynamic` per channel |
+| `/settings/skills` | Behavior | `agent/skills/`, `subagents/<id>/skills/` (`load_skill`) |
+| `/settings/knowledge` | Behavior | xAI Collections → `search_knowledge` tool |
+| `/settings/voice` | Behavior | New Railway `grok-voice-proxy` (fork fieldflow; not `voice.tradecraft.nexus`) |
+
+Field mappings and `replacementHint` metadata live in `src/lib/settings-runtime-contract.ts`. Mock defaults in `src/lib/settings-mock/`.
 
 ## Key concepts
 
