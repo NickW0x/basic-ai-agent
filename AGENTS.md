@@ -1,68 +1,66 @@
 # Coding Agent Guidance
 
-This is a chat bot built with [Chat SDK](https://chat-sdk.dev), a unified TypeScript SDK by Vercel for building bots across Slack, Teams, Google Chat, Discord, WhatsApp, and more.
+This is a multi-platform multi-agent assistant built with [eve](https://eve.dev), [Chat SDK](https://chat-sdk.dev), and a web UI powered by [Vercel AI Elements](https://elements.ai-sdk.dev).
 
 ## Commands
 
 ```bash
-npm run dev      # Start the dev server
-npm run build    # Production build
+npm run dev      # Start Next.js + eve dev servers (via withEve)
+npm run build    # Production build (Next.js + eve)
 npm run start    # Start production server
+npm run typecheck
 ```
+
+Requires **Node 24+**.
 
 ## Project structure
 
 ```
+agent/
+  agent.ts                    # Root runtime config (model, limits)
+  instructions.md             # Orchestrator system prompt
+  tools/                      # Root tools
+  subagents/                  # Specialist agents (researcher, analyst)
+  channels/
+    chat-sdk.ts               # Slack, Telegram, WhatsApp, GChat, GitHub
+    eve.ts                    # Browser HTTP channel auth
 src/
-  lib/bot.ts                            # Bot config — adapters, state, handlers
-  app/api/webhooks/[platform]/route.ts  # Webhook route (all platforms)
-.env.example                            # Required environment variables
-next.config.ts                          # Next.js config (serverExternalPackages if needed)
+  app/page.tsx                # Web chat UI (useEveAgent + AI Elements)
+  components/chat/            # Eve shell, message list, subagent badges
+  lib/eve-host.ts             # Local eve dev server origin helper
+.env.example                  # Required environment variables
+next.config.ts                # withEve() wraps Next.js config
 ```
 
 ## How it works
 
-1. Each chat platform sends webhooks to `/api/webhooks/{platform}` (e.g. `/api/webhooks/slack`).
-2. The route handler in `route.ts` delegates to the bot's webhook handler for that platform.
-3. The bot is configured in `src/lib/bot.ts` with platform adapters, a state adapter, and message handlers.
+1. **Web UI** at `/` uses `useEveAgent` to talk to eve over `/eve/v1/session`.
+2. **Platform messengers** send webhooks to `/api/webhooks/{platform}`; eve's Chat SDK channel in `agent/channels/chat-sdk.ts` handles verification, parsing, and routing.
+3. The **orchestrator** in `agent/instructions.md` delegates to subagents (`researcher`, `analyst`) for focused work.
+4. `withEve()` in `next.config.ts` runs the Next.js app and eve agent runtime together.
 
 ## Key concepts
 
-- **Adapters** connect the bot to chat platforms. Each adapter handles webhook verification, message parsing, and platform-specific formatting.
-- **State adapter** provides persistence for subscriptions and distributed locking (e.g. Redis, PostgreSQL). In-memory state is for development only.
-- **Handlers** respond to events:
-  - `onNewMention` — bot is @mentioned in a new thread
-  - `onSubscribedMessage` — new message in a thread the bot is subscribed to
-  - `onNewMessage` — messages matching a pattern (e.g. regex, keyword)
-  - `onReaction` — reaction added to a message
-  - `onSlashCommand` — slash command invoked (Slack, Discord)
-- **Thread** represents a conversation. Use `thread.post()` to send messages, `thread.subscribe()` to listen for follow-ups.
-- **Cards** are rich messages built with JSX (using `jsxImportSource: "chat"` in tsconfig). Import components from `chat/cards`.
-
-## Agent resources
-
-Use the Chat SDK skill and other applicable skills while working on this project.
-
-The [Vercel Plugin](https://vercel.com/docs/agent-resources/vercel-plugin) provides a broader agent toolkit. It includes the Chat SDK skill alongside specialist agents, agent slash commands, and more:
-
-The plugin is optional, the skill alone is enough to build with Chat SDK.
+- **eve agent** — filesystem-first agent definition under `agent/` (instructions, tools, subagents, channels).
+- **Subagents** — declared specialists with their own instructions and tools.
+- **Channels** — entry points for web (`eve`) and chat platforms (`chat-sdk`).
+- **State adapter** — Redis (production) or in-memory (dev) for Chat SDK thread subscriptions.
+- **Durable sessions** — eve runtime uses Vercel Workflows in production; local dev persists under `.workflow-data/` (gitignored).
 
 ## Docs
 
-When dependencies are installed, inspect the bundled docs before writing code:
+When dependencies are installed, inspect bundled docs before writing code:
 
 ```txt
-node_modules/chat/docs/                    # bundled docs
+node_modules/eve/docs/                     # eve framework docs
+node_modules/chat/docs/                    # Chat SDK docs
 node_modules/chat/dist/index.d.ts          # core API types
-node_modules/chat/dist/adapters/index.d.ts # static adapter catalog types
-node_modules/chat/resources/guides/        # framework/platform guides
-node_modules/chat/resources/templates.json # starter templates
+node_modules/chat/dist/adapters/index.d.ts # adapter catalog types
 ```
 
 Start with:
 
-- `node_modules/chat/docs/getting-started.mdx`
-- `node_modules/chat/docs/usage.mdx`
-- `node_modules/chat/docs/handling-events.mdx`
+- `node_modules/eve/docs/README.md`
+- `node_modules/eve/docs/getting-started.mdx`
 - `node_modules/chat/docs/platform-adapters.mdx`
 - `node_modules/chat/docs/state-adapters.mdx`

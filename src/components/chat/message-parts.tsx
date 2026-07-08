@@ -95,12 +95,20 @@ export function MessageParts({ message, isStreaming }: MessagePartsProps) {
         }
 
         if (isToolUIPart(part)) {
+          const toolName = getToolName(part);
+          const displayName =
+            toolName === "researcher"
+              ? "Researcher subagent"
+              : toolName === "analyst"
+                ? "Analyst subagent"
+                : toolName;
+
           const toolHeaderProps =
             part.type === "dynamic-tool"
               ? {
                   type: part.type as DynamicToolUIPart["type"],
                   state: part.state,
-                  toolName: getToolName(part),
+                  toolName: displayName,
                 }
               : {
                   type: part.type as ToolUIPart["type"],

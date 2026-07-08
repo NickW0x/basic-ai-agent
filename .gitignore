@@ -10,6 +10,17 @@ out/
 .env.local
 .env.*.local
 
+# eve runtime
+.eve/
+.workflow-data/
+.vercel/
+
+# IDE / agent tooling (local only)
+.cursor/
+.agents/
+.claude/
+skills-lock.json
+
 # misc
 .DS_Store
 *.tsbuildinfo

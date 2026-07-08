@@ -1,9 +1,10 @@
 import type { NextConfig } from "next";
+import { withEve } from "eve/next";
 
 const nextConfig: NextConfig = {
   transpilePackages: [
     "chat",
-    "@chat-adapter/web",
+    "eve",
     "@chat-adapter/slack",
     "@chat-adapter/telegram",
     "@chat-adapter/whatsapp",
@@ -14,4 +15,4 @@ const nextConfig: NextConfig = {
   ],
 };
 
-export default nextConfig;
+export default withEve(nextConfig);

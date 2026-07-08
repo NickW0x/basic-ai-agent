@@ -28,11 +28,14 @@ import {
   getModelById,
 } from "@/lib/chat-config";
 import type { ChatStatus } from "ai";
+import type { UseEveAgentStatus } from "eve/react";
 import { GlobeIcon } from "lucide-react";
 import { useCallback, useState } from "react";
 
+type ComposerStatus = ChatStatus | UseEveAgentStatus;
+
 interface PromptAreaProps {
-  status: ChatStatus;
+  status: ComposerStatus;
   onSubmit: (
     message: PromptInputMessage,
     options: { model: string; webSearch: boolean },

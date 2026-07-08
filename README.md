@@ -1,16 +1,31 @@
 # basic-ai-agent
 
-A multi-platform AI chat bot built with [Chat SDK](https://chat-sdk.dev), with a polished web UI powered by [Vercel AI Elements](https://elements.ai-sdk.dev).
+A multi-platform multi-agent assistant built with [eve](https://eve.dev), [Chat SDK](https://chat-sdk.dev), and a polished web UI powered by [Vercel AI Elements](https://elements.ai-sdk.dev).
+
+## Architecture
+
+The root **orchestrator** (`agent/instructions.md`) delegates focused work to declared specialist subagents:
+
+| Subagent | Role | Tools |
+| --- | --- | --- |
+| `researcher` | Web search, current facts, weather | `search_web`, `get_weather` |
+| `analyst` | Math and numeric calculations | `calculate` |
+
+- **Web UI** talks to eve over the HTTP channel (`/eve/v1/session`) via `useEveAgent`.
+- **Slack, Telegram, WhatsApp, Google Chat, GitHub** connect through eve's Chat SDK channel at `/api/webhooks/{platform}`.
+- **Durable sessions** survive cold starts and redeploys via Vercel Workflows (eve runtime).
+- **Redis** persists Chat SDK thread subscriptions across serverless instances.
+
+Requires **Node 24+**.
 
 ## Web UI
 
 The browser chat at `/` uses [AI Elements](https://elements.ai-sdk.dev/components) and shadcn/ui:
 
-- Streaming markdown responses with tool-call cards
-- Model picker, file attachments, and web-search toggle
+- Durable eve sessions with streaming markdown and tool-call cards
+- Specialist delegation badges (`researcher`, `analyst`) from the eve event stream
+- Model picker, file attachments, and web-search toggle (passed as ephemeral `clientContext`)
 - System-aware light/dark theme
-
-The web API at `/api/chat` streams full UIMessage parts (tools, files, text) via AI SDK's `createAgentUIStreamResponse`. Slack, Telegram, GitHub, and other platforms continue to use Chat SDK webhook handlers in `src/lib/bot.ts`.
 
 ## Getting Started
 
@@ -27,21 +42,23 @@ npm install
 npm run dev
 ```
 
+`withEve()` in `next.config.ts` runs the Next.js app and eve agent runtime together. The browser calls eve same-origin; no separate agent URL is needed.
+
 3. Expose your local server to the internet (ngrok, Cloudflare Tunnel, or a Vercel preview) and configure platform webhook URLs in each messenger's developer console.
 
 Adapters are registered conditionally — only platforms with credentials in `.env.local` are enabled.
 
 ## Endpoints
 
-| Platform | Webhook URL |
+| Surface | URL |
 | --- | --- |
-| Web | `/api/webhooks/web` |
-| Web chat API | `/api/chat` |
-| Slack | `/api/webhooks/slack` |
-| Telegram | `/api/webhooks/telegram` |
-| WhatsApp | `/api/webhooks/whatsapp` |
-| Google Chat | `/api/webhooks/gchat` |
-| GitHub | `/api/webhooks/github` |
+| Web chat UI | `/` |
+| eve HTTP API | `/eve/v1/session` |
+| Slack webhook | `/api/webhooks/slack` |
+| Telegram webhook | `/api/webhooks/telegram` |
+| WhatsApp webhook | `/api/webhooks/whatsapp` |
+| Google Chat webhook | `/api/webhooks/gchat` |
+| GitHub webhook | `/api/webhooks/github` |
 
 Replace `https://your-domain.com` with your deployed URL or tunnel address.
 
@@ -118,21 +135,26 @@ Test by @mentioning your bot on a PR or issue comment.
 ## Project Structure
 
 ```
+agent/
+  agent.ts                              Root runtime config (model, limits)
+  instructions.md                         Orchestrator system prompt
+  lib/                                  Shared helpers (Tavily, math, UI context)
+  tools/                                Harness overrides (disable shell/filesystem)
+  subagents/
+    researcher/                           Web search and weather specialist
+    analyst/                              Math specialist
+  channels/
+    chat-sdk.ts                           Slack, Telegram, WhatsApp, GChat, GitHub
+    eve.ts                                Browser HTTP channel auth
 src/
   app/
-    page.tsx                              Web chat UI (AI Elements)
-    api/chat/route.ts                     Web chat API (full UIMessage stream)
-    api/webhooks/[platform]/route.ts      Webhook endpoint for platform adapters
+    page.tsx                              Web chat UI (useEveAgent + AI Elements)
   components/
-    ai-elements/                          Vercel AI Elements (installed via CLI)
-    chat/                                 App-specific chat layout components
+    ai-elements/                          Vercel AI Elements
+    chat/                                 Chat layout, eve shell, subagent badges
     ui/                                   shadcn/ui primitives
   lib/
-    agent.ts                              ToolLoopAgent with per-request options
-    bot.ts                                Chat SDK bot for Slack, GitHub, etc.
-    web-chat.ts                           Web-specific streaming handler
     chat-config.ts                        Models and UI config
-    tools.ts                              Agent tools (weather, calculate, search)
 .env.example                              Required environment variables
 ```
 
@@ -140,14 +162,14 @@ src/
 
 | Command | Description |
 | --- | --- |
-| `npm run dev` | Start the development server |
-| `npm run build` | Create a production build |
+| `npm run dev` | Start Next.js + eve dev servers (via `withEve`) |
+| `npm run build` | Create a production build (Next.js + eve) |
 | `npm run start` | Start the production server |
 | `npm run typecheck` | Type-check the project |
 
 ## Learn More
 
+- [eve Documentation](https://eve.dev/docs)
 - [Chat SDK Documentation](https://chat-sdk.dev/docs)
 - [AI Elements Documentation](https://elements.ai-sdk.dev/docs)
 - [Adapter Setup Guides](https://chat-sdk.dev/adapters)
-- [GitHub Repository](https://github.com/vercel/chat)

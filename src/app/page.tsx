@@ -1,5 +1,8 @@
-import { ChatShell } from "@/components/chat/chat-shell";
+import { getEveDevHost } from "@/lib/eve-host";
+import { EveChatShell } from "@/components/chat/eve-chat-shell";
 
-export default function ChatPage() {
-  return <ChatShell />;
+export default async function ChatPage() {
+  const eveHost = await getEveDevHost();
+
+  return <EveChatShell eveHost={eveHost} />;
 }
