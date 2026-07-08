@@ -78,7 +78,10 @@ async function collectMessages(thread: Thread): Promise<Message[]> {
 
 async function respondWithAgent(thread: Thread) {
   const history = await toAiMessages(await collectMessages(thread));
-  const result = await agent.stream({ messages: history });
+  const result = await agent.stream({
+    messages: history,
+    options: {},
+  });
   await thread.post(result.fullStream);
 }
 

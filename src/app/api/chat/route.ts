@@ -1,8 +1,5 @@
-import { after } from "next/server";
-import { bot } from "@/lib/bot";
+import { handleWebChat } from "@/lib/web-chat";
 
 export async function POST(request: Request): Promise<Response> {
-  return bot.webhooks.web(request, {
-    waitUntil: (task) => after(() => task),
-  });
+  return handleWebChat(request);
 }

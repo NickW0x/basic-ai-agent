@@ -12,6 +12,12 @@
       "sourceType": "github",
       "skillPath": "skills/chat/SKILL.md",
       "computedHash": "dd2e9e18aa536e4f2625a6830247e4f593ba0c65ba7527365c18375c2cc618bd"
+    },
+    "eve": {
+      "source": "vercel/eve",
+      "sourceType": "github",
+      "skillPath": "SKILL.md",
+      "computedHash": "79a1e606ecf33eed33c1f3adc1cc266de391e19aa9237ca37e4f3aa3fba6b228"
     }
   }
 }

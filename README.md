@@ -1,6 +1,16 @@
 # basic-ai-agent
 
-A multi-platform AI chat bot built with [Chat SDK](https://chat-sdk.dev).
+A multi-platform AI chat bot built with [Chat SDK](https://chat-sdk.dev), with a polished web UI powered by [Vercel AI Elements](https://elements.ai-sdk.dev).
+
+## Web UI
+
+The browser chat at `/` uses [AI Elements](https://elements.ai-sdk.dev/components) and shadcn/ui:
+
+- Streaming markdown responses with tool-call cards
+- Model picker, file attachments, and web-search toggle
+- System-aware light/dark theme
+
+The web API at `/api/chat` streams full UIMessage parts (tools, files, text) via AI SDK's `createAgentUIStreamResponse`. Slack, Telegram, GitHub, and other platforms continue to use Chat SDK webhook handlers in `src/lib/bot.ts`.
 
 ## Getting Started
 
@@ -109,9 +119,20 @@ Test by @mentioning your bot on a PR or issue comment.
 
 ```
 src/
-  lib/bot.ts                              Bot configuration and handlers
-  app/api/webhooks/[platform]/route.ts    Webhook endpoint for platform adapters
-  app/api/chat/route.ts                   Web adapter endpoint when selected
+  app/
+    page.tsx                              Web chat UI (AI Elements)
+    api/chat/route.ts                     Web chat API (full UIMessage stream)
+    api/webhooks/[platform]/route.ts      Webhook endpoint for platform adapters
+  components/
+    ai-elements/                          Vercel AI Elements (installed via CLI)
+    chat/                                 App-specific chat layout components
+    ui/                                   shadcn/ui primitives
+  lib/
+    agent.ts                              ToolLoopAgent with per-request options
+    bot.ts                                Chat SDK bot for Slack, GitHub, etc.
+    web-chat.ts                           Web-specific streaming handler
+    chat-config.ts                        Models and UI config
+    tools.ts                              Agent tools (weather, calculate, search)
 .env.example                              Required environment variables
 ```
 
@@ -127,5 +148,6 @@ src/
 ## Learn More
 
 - [Chat SDK Documentation](https://chat-sdk.dev/docs)
+- [AI Elements Documentation](https://elements.ai-sdk.dev/docs)
 - [Adapter Setup Guides](https://chat-sdk.dev/adapters)
 - [GitHub Repository](https://github.com/vercel/chat)

@@ -1,5 +1,7 @@
-/** @jsxImportSource react */
 import type { Metadata } from "next";
+import { ThemeProvider } from "@/components/theme-provider";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Basic AI Agent",
@@ -12,17 +14,16 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body
-        style={{
-          margin: 0,
-          fontFamily:
-            'ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif',
-          background: "#0a0a0a",
-          color: "#f4f4f5",
-        }}
-      >
-        {children}
+    <html lang="en" suppressHydrationWarning>
+      <body className="min-h-dvh overflow-hidden">
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+        >
+          <TooltipProvider>{children}</TooltipProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

@@ -42,4 +42,63 @@ export const tools = {
       };
     },
   }),
+
+  searchWeb: tool({
+    description:
+      "Search the web for current information. Use when the user asks about recent events, news, or facts that may have changed.",
+    inputSchema: z.object({
+      query: z.string().describe("Search query"),
+    }),
+    execute: async ({ query }) => {
+      const apiKey = process.env.TAVILY_API_KEY;
+
+      if (!apiKey) {
+        return {
+          query,
+          results: [],
+          message:
+            "Web search is not configured. Add TAVILY_API_KEY to your environment to enable search.",
+        };
+      }
+
+      const response = await fetch("https://api.tavily.com/search", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          api_key: apiKey,
+          query,
+          max_results: 5,
+          include_answer: true,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Tavily search failed with status ${response.status}`);
+      }
+
+      const data = (await response.json()) as {
+        answer?: string;
+        results?: Array<{
+          title: string;
+          url: string;
+          content: string;
+        }>;
+      };
+
+      return {
+        query,
+        answer: data.answer ?? null,
+        results: (data.results ?? []).map((result) => ({
+          title: result.title,
+          url: result.url,
+          snippet: result.content,
+        })),
+      };
+    },
+  }),
 };
+
+export const baseToolNames = ["getWeather", "calculate"] as const;
+export const webSearchToolNames = ["getWeather", "calculate", "searchWeb"] as const;
+
+export type AgentToolName = (typeof webSearchToolNames)[number];
