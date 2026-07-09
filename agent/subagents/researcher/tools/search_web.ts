@@ -1,6 +1,6 @@
 import { defineTool } from "eve/tools";
 import { z } from "zod";
-import { searchTavily } from "../../../lib/tavily";
+import { searchWeb } from "../../../lib/web-search";
 
 export default defineTool({
   description:
@@ -9,6 +9,6 @@ export default defineTool({
     query: z.string().describe("Search query"),
   }),
   async execute({ query }) {
-    return searchTavily(query);
+    return searchWeb(query);
   },
 });

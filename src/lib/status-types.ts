@@ -35,7 +35,7 @@ export interface EveHealthStatus {
 
 export interface CapabilityStatus {
   aiGateway: StatusLevel;
-  tavily: StatusLevel;
+  webSearch: StatusLevel;
   model: string;
 }
 

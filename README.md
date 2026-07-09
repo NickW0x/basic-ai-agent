@@ -7,12 +7,17 @@ A multi-platform multi-agent assistant built with [eve](https://eve.dev), [Chat 
 ## Prerequisites
 
 - **Node 24+** (see `engines` in `package.json`)
-- **[Vercel AI Gateway](https://vercel.com/docs/ai-gateway) API key** — set `AI_GATEWAY_API_KEY` in `.env.local`
-- **Optional:** `TAVILY_API_KEY` for real web search via the researcher subagent
-- **Optional:** `REDIS_URL` for production Chat SDK thread subscriptions (Upstash Redis recommended)
-- **Optional (voice mode):** `XAI_API_KEY` for Grok Voice realtime sessions and SpeechInput STT fallback
+- **[Vercel AI Gateway](https://vercel.com/docs/ai-gateway) API key** — set `AI_GATEWAY_API_KEY` in `.env.local` (or Vercel Sensitive Env for production)
+- **Optional:** `XAI_API_KEY` for researcher/marketer `search_web` (xAI `web_search` via Responses API) and voice/STT
+- **Optional:** `TAVILY_API_KEY` as fallback web search when xAI is unavailable
+- **Production Redis:** Upstash via **[Vercel Marketplace](https://vercel.com/marketplace/upstash)** (`vercel integration add upstash`) — Chat SDK still reads `REDIS_URL` (TCP). Do not provision a standalone Upstash DB outside Vercel for this app.
+- **Optional (voice mode):** `XAI_API_KEY` on Vercel/local for Grok Voice realtime sessions and SpeechInput STT fallback (same key also powers `search_web` when set)
 - **Optional (voice mode):** Railway-deployed proxy from [`services/voice-proxy/`](services/voice-proxy/) — deploy as a **new** Railway service; never modify the fieldflow service at `voice.tradecraft.nexus`
 - **Optional (voice mode):** `NEXT_PUBLIC_VOICE_PROXY_URL` and `VOICE_PROXY_SHARED_SECRET` on Vercel/local (must match Railway)
+
+## Launch
+
+Production secrets live in **Vercel** (Sensitive Env + Marketplace Upstash) and **Railway** (voice proxy) — never in this public repo. Use the phased checklist in [`docs/LAUNCH.md`](docs/LAUNCH.md) for Phase 0 (core healthy), optional voice, and one-connector-at-a-time enablement. Local sync: `vercel env pull .env.local`.
 
 ## Quick start (web chat)
 
@@ -58,7 +63,7 @@ flowchart TD
   Orchestrator --> Summarizer["summarizer"]
   Orchestrator --> Coder["coder"]
   Orchestrator --> Marketer["marketer"]
-  Researcher --> Tavily["search_web + fetch_page"]
+  Researcher --> XAI["search_web xAI + fetch_page"]
   Researcher --> Weather["get_weather Open-Meteo"]
   Analyst --> Calc["calculate"]
   Coder --> Repo["read/grep/glob project"]
@@ -67,16 +72,18 @@ flowchart TD
 
 | Subagent | Role | Tools |
 | --- | --- | --- |
-| `researcher` | Web search, URLs, weather | `search_web` (Tavily), `fetch_page`, `get_weather` (Open-Meteo) |
+| `researcher` | Web search, URLs, weather | `search_web` (xAI `web_search`, Tavily fallback), `fetch_page`, `get_weather` (Open-Meteo) |
 | `analyst` | Math and numeric calculations | `calculate` |
 | `summarizer` | TL;DR and condensation | `fetch_page` |
 | `coder` | Repo inspection and code help | `read_project_file`, `grep_project`, `glob_project`, `run_typecheck` |
-| `marketer` | Copy and campaign messaging | `search_web`, `fetch_page`, `format_social_posts`, skill `copy-frameworks` |
+| `marketer` | Copy and campaign messaging | `search_web` (xAI, Tavily fallback), `fetch_page`, `format_social_posts`, skill `copy-frameworks` |
+
+Each `search_web` call uses a separate Grok Responses turn (direct to `api.x.ai`, not AI Gateway) in addition to the orchestrator/subagent model on AI Gateway.
 
 - **Web UI** talks to eve over the HTTP channel (`/eve/v1/session`) via `useEveAgent`.
 - **Slack, Telegram, WhatsApp, Messenger, X, Google Chat, GitHub, Sendblue, Discord, Teams, Linear, Resend** connect through eve's Chat SDK channel in [`agent/channels/chat-sdk.ts`](agent/channels/chat-sdk.ts) at `/api/webhooks/{platform}` — no manual Next.js webhook route file is required.
 - **Connector dashboard** — [`/settings`](src/app/settings/page.tsx) shows configured adapters, live Upstash Redis status, and missing env var names (no secrets stored in the UI).
-- **Agents & Tools dashboard** — [`/settings/agents`](src/app/settings/agents/page.tsx) shows eve runtime health, resolved model, subagent tool readiness, and capability deps (e.g. Tavily for `search_web`).
+- **Agents & Tools dashboard** — [`/settings/agents`](src/app/settings/agents/page.tsx) shows eve runtime health, resolved model, subagent tool readiness, and capability deps (e.g. `XAI_API_KEY` for `search_web`).
 - **Live status API** — [`GET /api/status`](src/app/api/status/route.ts) with optional `?sections=system,agents,connectors` powers auto-refreshing status across settings and the main chat header.
 - **Durable sessions** — in production, eve uses Vercel Workflows so sessions survive cold starts and redeploys. In local dev, workflow state is stored under `.workflow-data/` (gitignored).
 - **Redis** persists Chat SDK thread subscriptions across serverless instances in production. Without a real `REDIS_URL`, the bot falls back to in-memory state (development only).
@@ -137,7 +144,7 @@ sequenceDiagram
 ### Deploy the voice proxy
 
 1. Create a **new** Railway service from [`services/voice-proxy/`](services/voice-proxy/) ([`railway.toml`](services/voice-proxy/railway.toml) — Railpack build, `/health` check). Never reuse or modify the fieldflow service at `voice.tradecraft.nexus`.
-2. Set Railway variables: `XAI_API_KEY`, `VOICE_PROXY_SHARED_SECRET`, `ALLOWED_ORIGINS` (`https://agent.opensocket.xyz`, your `*.vercel.app` URL, and `http://localhost:3000`), optional `XAI_VOICE_AGENT_ID` (console Voice Agent Builder ID), optional `XAI_REALTIME_MODEL` (used only when `XAI_VOICE_AGENT_ID` is unset), optional Upstash `KV_REST_API_URL` / `KV_REST_API_TOKEN` for connection limits.
+2. Set Railway variables: `VOICE_PROXY_SHARED_SECRET`, `ALLOWED_ORIGINS` (`https://agent.opensocket.xyz`, your `*.vercel.app` URL, and `http://localhost:3000`), optional `XAI_VOICE_AGENT_ID` (console Voice Agent Builder ID), optional `XAI_REALTIME_MODEL` (used only when `XAI_VOICE_AGENT_ID` is unset). Optional connection limits: copy `KV_REST_API_URL` / `KV_REST_API_TOKEN` from the **same** Vercel Marketplace Upstash — do not create a second Redis. Do **not** set `XAI_API_KEY` on Railway (unused; tokens are minted on Vercel).
 3. Set Vercel/local variables: `XAI_API_KEY`, `NEXT_PUBLIC_VOICE_PROXY_URL`, `VOICE_PROXY_SHARED_SECRET` (must match Railway). If using a dashboard agent, set the same `XAI_VOICE_AGENT_ID` here so the web client sends transport-only `session.update`.
 4. Open the chat UI → header **Voice mode** → **Connect**. The settings preview at `/settings/voice` does not affect live sessions until phase 2 (and local soul/voice overrides are skipped when `XAI_VOICE_AGENT_ID` is set).
 
@@ -147,20 +154,24 @@ sequenceDiagram
 
 ## Environment variables
 
+Production secrets belong in **Vercel Sensitive Env** / **Railway**, not in git. Phased checklist: [`docs/LAUNCH.md`](docs/LAUNCH.md).
+
 | Variable | Required | Purpose |
 | --- | --- | --- |
 | `APP_URL` / `NEXT_PUBLIC_APP_URL` | Recommended | Canonical public origin (`https://agent.opensocket.xyz`) for metadata + server probes |
 | `AI_GATEWAY_API_KEY` | Yes | LLM calls via [Vercel AI Gateway](https://vercel.com/docs/ai-gateway) |
-| `AI_MODEL` | No | Default model override (fallback: `anthropic/claude-sonnet-4`) |
-| `TAVILY_API_KEY` | No | Enables researcher `search_web` tool via Tavily |
-| `REDIS_URL` | Production | Chat SDK subscriptions and distributed locks; dev falls back to in-memory state |
+| `AI_MODEL` | No | Default model override (fallback: `xai/grok-4.5`) |
+| `TAVILY_API_KEY` | No | Optional fallback for `search_web` when xAI is unavailable |
+| `XAI_API_KEY` | No | Enables `search_web` (xAI Responses `web_search`, direct to api.x.ai — not AI Gateway) plus voice realtime + `/api/transcribe` |
+| `XAI_SEARCH_MODEL` | No | Grok model for `search_web` (default: `grok-4.20-non-reasoning`) |
+| `REDIS_URL` | Production | Chat SDK subscriptions and distributed locks; provision Upstash via [Vercel Marketplace](https://vercel.com/marketplace/upstash); dev falls back to in-memory state |
 | `BOT_USERNAME` | No | Chat SDK bot display name (default: `opensocket-ai-agent`) |
-| `XAI_API_KEY` | Voice only | xAI realtime tokens + `/api/transcribe` STT |
 | `NEXT_PUBLIC_VOICE_PROXY_URL` | Voice only | Public Railway proxy URL (client WebSocket) |
 | `VOICE_PROXY_SHARED_SECRET` | Voice only | HMAC gate between Next.js and proxy |
 | `ALLOWED_ORIGINS` | Railway proxy | CORS allowlist (`https://agent.opensocket.xyz` + `*.vercel.app` + `http://localhost:3000`) |
 | `XAI_VOICE_AGENT_ID` | No | Console Voice Agent Builder ID; set on Railway + Vercel/local. Prefer over model mode |
 | `XAI_REALTIME_MODEL` | No | Default `grok-voice-think-fast-1.0` on proxy when `XAI_VOICE_AGENT_ID` is unset |
+| `KV_REST_API_URL` / `KV_REST_API_TOKEN` | Railway optional | Voice-proxy connection limits; copy from the same Marketplace Upstash |
 | Platform vars | Per adapter | Enable Slack, Telegram, WhatsApp, Messenger, X, Google Chat, GitHub, Sendblue, Discord, Teams, Linear, or Resend conditionally |
 
 See [`.env.example`](.env.example) for the full list. The placeholder `REDIS_URL` in `.env.example` is ignored intentionally — [`agent/channels/chat-sdk.ts`](agent/channels/chat-sdk.ts) detects example values and falls back to in-memory state.
@@ -199,7 +210,9 @@ Replace `https://agent.opensocket.xyz` with a tunnel address for local webhook t
 
 ### Redis (production)
 
-Set `REDIS_URL` to your [Upstash Redis](https://upstash.com) connection string. Redis is required in production so thread subscriptions and distributed locks survive serverless cold starts and multi-instance deploys. Without a real connection string, the bot falls back to in-memory state (development only).
+Provision Upstash **through Vercel Marketplace** only (`vercel integration add upstash` or [Marketplace → Upstash](https://vercel.com/marketplace/upstash)). Link the database to project `opensocket-ai-agent` so env vars are auto-injected. Chat SDK and the settings probe need a TCP `REDIS_URL` (`rediss://…`); if Marketplace injects REST/`KV_*` vars but not `REDIS_URL`, set `REDIS_URL` from the **Vercel-linked** resource details (still Marketplace-sourced). Do not create a standalone Upstash database outside Vercel for this app.
+
+Redis is required in production so thread subscriptions and distributed locks survive serverless cold starts and multi-instance deploys. Without a real connection string, the bot falls back to in-memory state (development only). See [`docs/LAUNCH.md`](docs/LAUNCH.md) Phase 0.
 
 ### Slack
 
@@ -391,7 +404,8 @@ src/
     status-types.ts             # Status vocabulary
 next.config.ts                  # withEve()
 .npmrc                          # legacy-peer-deps=true
-.env.example                    # Required environment variables
+.env.example                    # Required environment variables (placeholders only)
+docs/LAUNCH.md                  # Secrets-safe phased launch checklist
 ```
 
 ## Scripts
@@ -405,6 +419,7 @@ next.config.ts                  # withEve()
 
 ## Learn More
 
+- [Launch runbook](docs/LAUNCH.md) — secrets-safe Phase 0 / voice / connectors checklist
 - [eve Documentation](https://eve.dev/docs) — also available locally in `node_modules/eve/docs/`
 - [Chat SDK Documentation](https://chat-sdk.dev/docs)
 - [AI Elements Documentation](https://elements.ai-sdk.dev/docs)

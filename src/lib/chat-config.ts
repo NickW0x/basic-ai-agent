@@ -17,6 +17,11 @@ export interface ChatModel {
 // Curated AI Gateway models for the model picker.
 export const CHAT_MODELS: ChatModel[] = [
   {
+    id: "xai/grok-4.5",
+    name: "Grok 4.5",
+    vision: true,
+  },
+  {
     id: "anthropic/claude-sonnet-4",
     name: "Claude Sonnet 4",
     vision: false,
@@ -34,11 +39,11 @@ export const CHAT_MODELS: ChatModel[] = [
 ];
 
 export const DEFAULT_MODEL_ID =
-  process.env.AI_MODEL ?? CHAT_MODELS[0]?.id ?? "anthropic/claude-sonnet-4";
+  process.env.AI_MODEL ?? CHAT_MODELS[0]?.id ?? "xai/grok-4.5";
 
 // First vision-capable model — used when the user attaches files.
 export const DEFAULT_VISION_MODEL_ID =
-  CHAT_MODELS.find((model) => model.vision)?.id ?? "openai/gpt-4o";
+  CHAT_MODELS.find((model) => model.vision)?.id ?? "xai/grok-4.5";
 
 export function getModelById(modelId: string): ChatModel | undefined {
   return CHAT_MODELS.find((model) => model.id === modelId);

@@ -2,9 +2,10 @@ import type {
   AggregateHealth,
   CapabilityStatus,
   EveHealthStatus,
+  StatusLevel,
   SystemStatusSlice,
 } from "../../src/lib/status-types";
-import { getEnvStatus, getEnvValue } from "./env-helpers";
+import { getEnvStatus, getEnvValue, isEnvConfigured } from "./env-helpers";
 import { probeRedis } from "./redis-probe";
 import { resolveEveOrigin } from "../../src/lib/resolve-eve-origin";
 
@@ -46,11 +47,19 @@ export async function probeEveHealth(origin: string): Promise<EveHealthStatus> {
   }
 }
 
+export function getWebSearchStatus(): StatusLevel {
+  if (isEnvConfigured("XAI_API_KEY") || isEnvConfigured("TAVILY_API_KEY")) {
+    return "configured";
+  }
+
+  return "unconfigured";
+}
+
 export function getCapabilityStatus(): CapabilityStatus {
   return {
     aiGateway: getEnvStatus("AI_GATEWAY_API_KEY"),
-    tavily: getEnvStatus("TAVILY_API_KEY"),
-    model: getEnvValue("AI_MODEL") ?? "anthropic/claude-sonnet-4",
+    webSearch: getWebSearchStatus(),
+    model: getEnvValue("AI_MODEL") ?? "xai/grok-4.5",
   };
 }
 

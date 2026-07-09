@@ -10,8 +10,8 @@ import {
   SUBAGENT_ACTIVE_TOOLS,
   SUBAGENT_SKILLS,
   TOOL_CAPABILITY_DEPS,
+  isToolCapabilityReady,
 } from "./capability-deps";
-import { getEnvStatus } from "./env-helpers";
 
 const PROBE_TIMEOUT_MS = 5000;
 
@@ -44,20 +44,19 @@ function resolveToolStatus(toolName: string, enabled = true): ToolStatusEntry {
 
   const dep = TOOL_CAPABILITY_DEPS[toolName];
 
-  if (!dep?.envVar) {
+  if (!dep?.envVar && !dep?.envVars?.length) {
     return { name: toolName, status: "ready" };
   }
 
-  const envStatus = getEnvStatus(dep.envVar);
-
-  if (envStatus === "configured") {
+  if (isToolCapabilityReady(dep)) {
     return { name: toolName, status: "ready" };
   }
 
   return {
     name: toolName,
     status: "limited",
-    requiredEnv: dep.envVar,
+    requiredEnv:
+      dep.requiredEnvLabel ?? dep.envVar ?? dep.envVars?.join(" or "),
   };
 }
 
@@ -90,7 +89,7 @@ function buildAgentEntry(
 }
 
 function buildFilesystemManifest(): AgentsStatusSlice {
-  const model = process.env.AI_MODEL ?? "anthropic/claude-sonnet-4";
+  const model = process.env.AI_MODEL ?? "xai/grok-4.5";
 
   const orchestrator = buildAgentEntry(
     "orchestrator",
@@ -127,7 +126,7 @@ function buildFilesystemManifest(): AgentsStatusSlice {
 }
 
 function buildFromEveInfo(info: EveInfoResponse): AgentsStatusSlice {
-  const model = info.model ?? process.env.AI_MODEL ?? "anthropic/claude-sonnet-4";
+  const model = info.model ?? process.env.AI_MODEL ?? "xai/grok-4.5";
   const maxSubagentDepth = info.limits?.maxSubagentDepth ?? 2;
 
   const orchestratorSkills = (info.skills ?? [])

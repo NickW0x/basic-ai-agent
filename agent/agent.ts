@@ -1,8 +1,7 @@
 import { defineAgent, defineDynamic } from "eve";
 import { parseUiContextFromMessages } from "./lib/ui-context";
 
-const defaultModel =
-  process.env.AI_MODEL ?? "anthropic/claude-sonnet-4";
+const defaultModel = process.env.AI_MODEL ?? "xai/grok-4.5";
 
 export default defineAgent({
   model: defineDynamic({
