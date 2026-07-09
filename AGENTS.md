@@ -53,8 +53,6 @@ src/
   lib/eve-host.ts             # Local eve dev server origin helper
 .env.example                  # Required environment variables
 next.config.ts                # withEve() wraps Next.js config
-.cursor/skills/
-  ai-elements/                # Cursor project skill (AI Elements reference + demos)
 ```
 
 ## How it works

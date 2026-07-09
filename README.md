@@ -43,7 +43,7 @@ Adapters are registered conditionally — only platforms with credentials in `.e
 
 ## Architecture
 
-The root **orchestrator** ([`agent/instructions.md`](agent/instructions.md)) delegates focused work to specialist subagents and synthesizes a single reply. Root [`agent/tools/*`](agent/tools/) call `disableTool()` so the orchestrator does not use filesystem, shell, or self-copy tools directly.
+The root **orchestrator** ([`agent/instructions.md`](agent/instructions.md)) delegates focused work to specialist subagents and synthesizes a single reply. Root [`agent/tools/*`](agent/tools/) call `disableTool()` so the orchestrator does not use filesystem or shell tools directly.
 
 ```mermaid
 flowchart TD
@@ -338,7 +338,7 @@ agent/                          # eve agent (source of truth)
   instructions.md               # Orchestrator system prompt
   skills/                       # eve load_skill markdown (e.g. chat-reply-format.md)
   lib/                          # Shared helpers (Tavily, fetch-page, project-files, connectors)
-  tools/                        # disableTool() overrides at root (incl. agent self-copy)
+  tools/                        # disableTool() overrides at root
   subagents/
     researcher/                 # Web search, URLs, weather
     analyst/                    # Math specialist
@@ -386,8 +386,6 @@ src/
 next.config.ts                  # withEve()
 .npmrc                          # legacy-peer-deps=true
 .env.example                    # Required environment variables
-.cursor/skills/
-  ai-elements/                  # Cursor project skill (AI Elements reference + demos)
 ```
 
 ## Scripts
@@ -404,5 +402,4 @@ next.config.ts                  # withEve()
 - [eve Documentation](https://eve.dev/docs) — also available locally in `node_modules/eve/docs/`
 - [Chat SDK Documentation](https://chat-sdk.dev/docs)
 - [AI Elements Documentation](https://elements.ai-sdk.dev/docs)
-- [AI Elements skill](.cursor/skills/ai-elements/SKILL.md) — Cursor project skill (component reference + demos)
 - [Adapter Setup Guides](https://chat-sdk.dev/adapters)
