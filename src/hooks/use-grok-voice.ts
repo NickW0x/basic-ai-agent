@@ -8,6 +8,7 @@ import {
 import {
   GrokVoiceClient,
   type GrokVoiceClientState,
+  type GrokVoiceSessionTokens,
   VOICE_SAMPLE_RATE,
 } from "@/lib/voice-client";
 import { getVoiceProxyUrl } from "@/lib/voice/runtime";
@@ -88,7 +89,8 @@ export function useGrokVoice(options: UseGrokVoiceOptions = {}) {
           };
           throw new Error(errorData.error || "Failed to create voice session");
         }
-        return res.json();
+        // Includes dashboard_agent when XAI_VOICE_AGENT_ID is set server-side.
+        return res.json() as Promise<GrokVoiceSessionTokens>;
       },
       onToolCall:
         onToolCall ??

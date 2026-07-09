@@ -105,6 +105,8 @@ export async function POST(req: Request) {
       gate_token: gateToken,
       expires_at: xaiData.expires_at,
       session_id: sessionId,
+      // True when XAI_VOICE_AGENT_ID is set — client skips local persona session.update.
+      dashboard_agent: Boolean(process.env.XAI_VOICE_AGENT_ID?.trim()),
     });
   } catch (error) {
     console.error("[voice/session] Error:", error);

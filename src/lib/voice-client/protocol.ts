@@ -203,6 +203,9 @@ export class GrokVoiceClient {
             return;
           }
 
+          // Dashboard agent owns persona/tools; client only configures transport.
+          const dashboardAgent = Boolean(tokens.dashboard_agent);
+
           const websocket = new WebSocket(
             this.proxyWsUrl(tokens.xai_token, tokens.gate_token),
           );
@@ -246,10 +249,20 @@ export class GrokVoiceClient {
               case "conversation.created":
                 if (!isSessionConfigSent) {
                   isSessionConfigSent = true;
-                  websocket.send(
-                    JSON.stringify({
-                      type: "session.update",
-                      session: {
+                  // Transport-only when using console agent; full persona otherwise.
+                  const session = dashboardAgent
+                    ? {
+                        turn_detection: { type: null },
+                        audio: {
+                          input: {
+                            format: { type: "audio/pcm", rate: VOICE_SAMPLE_RATE },
+                          },
+                          output: {
+                            format: { type: "audio/pcm", rate: VOICE_SAMPLE_RATE },
+                          },
+                        },
+                      }
+                    : {
                         voice: this.config.agentVoice ?? "ara",
                         instructions: this.config.systemPrompt,
                         tools: this.config.tools,
@@ -263,7 +276,11 @@ export class GrokVoiceClient {
                             speed: this.config.outputSpeed ?? 1,
                           },
                         },
-                      },
+                      };
+                  websocket.send(
+                    JSON.stringify({
+                      type: "session.update",
+                      session,
                     }),
                   );
 

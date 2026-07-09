@@ -135,9 +135,11 @@ sequenceDiagram
 ### Deploy the voice proxy
 
 1. Create a **new** Railway service from [`services/voice-proxy/`](services/voice-proxy/) ([`railway.toml`](services/voice-proxy/railway.toml) — Railpack build, `/health` check). Never reuse or modify the fieldflow service at `voice.tradecraft.nexus`.
-2. Set Railway variables: `XAI_API_KEY`, `VOICE_PROXY_SHARED_SECRET`, `ALLOWED_ORIGINS` (your Vercel app + `http://localhost:3000`), optional `XAI_REALTIME_MODEL`, optional Upstash `KV_REST_API_URL` / `KV_REST_API_TOKEN` for connection limits.
-3. Set Vercel/local variables: `XAI_API_KEY`, `NEXT_PUBLIC_VOICE_PROXY_URL`, `VOICE_PROXY_SHARED_SECRET` (must match Railway).
-4. Open the chat UI → header **Voice mode** → **Connect**. The settings preview at `/settings/voice` does not affect live sessions until phase 2.
+2. Set Railway variables: `XAI_API_KEY`, `VOICE_PROXY_SHARED_SECRET`, `ALLOWED_ORIGINS` (your Vercel app + `http://localhost:3000`), optional `XAI_VOICE_AGENT_ID` (console Voice Agent Builder ID), optional `XAI_REALTIME_MODEL` (used only when `XAI_VOICE_AGENT_ID` is unset), optional Upstash `KV_REST_API_URL` / `KV_REST_API_TOKEN` for connection limits.
+3. Set Vercel/local variables: `XAI_API_KEY`, `NEXT_PUBLIC_VOICE_PROXY_URL`, `VOICE_PROXY_SHARED_SECRET` (must match Railway). If using a dashboard agent, set the same `XAI_VOICE_AGENT_ID` here so the web client sends transport-only `session.update`.
+4. Open the chat UI → header **Voice mode** → **Connect**. The settings preview at `/settings/voice` does not affect live sessions until phase 2 (and local soul/voice overrides are skipped when `XAI_VOICE_AGENT_ID` is set).
+
+**Realtime modes:** with `XAI_VOICE_AGENT_ID` set, the proxy connects to `wss://api.x.ai/v1/realtime?agent_id=…` and the console agent owns persona, voice, and tools. Without it, the proxy uses `?model=…` (`XAI_REALTIME_MODEL`) and the client applies local soul/voice/tools via `session.update`.
 
 `services/voice-proxy/dist/` is gitignored — Railway builds from `src/`.
 
@@ -154,7 +156,8 @@ sequenceDiagram
 | `NEXT_PUBLIC_VOICE_PROXY_URL` | Voice only | Public Railway proxy URL (client WebSocket) |
 | `VOICE_PROXY_SHARED_SECRET` | Voice only | HMAC gate between Next.js and proxy |
 | `ALLOWED_ORIGINS` | Railway proxy | CORS allowlist (Vercel app + `http://localhost:3000`) |
-| `XAI_REALTIME_MODEL` | No | Default `grok-voice-think-fast-1.0` on proxy |
+| `XAI_VOICE_AGENT_ID` | No | Console Voice Agent Builder ID; set on Railway + Vercel/local. Prefer over model mode |
+| `XAI_REALTIME_MODEL` | No | Default `grok-voice-think-fast-1.0` on proxy when `XAI_VOICE_AGENT_ID` is unset |
 | Platform vars | Per adapter | Enable Slack, Telegram, WhatsApp, Messenger, X, Google Chat, GitHub, Sendblue, Discord, Teams, Linear, or Resend conditionally |
 
 See [`.env.example`](.env.example) for the full list. The placeholder `REDIS_URL` in `.env.example` is ignored intentionally — [`agent/channels/chat-sdk.ts`](agent/channels/chat-sdk.ts) detects example values and falls back to in-memory state.

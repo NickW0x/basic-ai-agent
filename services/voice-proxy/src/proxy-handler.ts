@@ -6,7 +6,12 @@ import { createHmac, randomUUID } from "crypto";
 import type { IncomingMessage } from "http";
 import WebSocket from "ws";
 import { createLogger } from "./logger";
-import { XAI_REALTIME_URL } from "./xai-config";
+import {
+  USE_DASHBOARD_AGENT,
+  XAI_REALTIME_MODEL,
+  XAI_REALTIME_URL,
+  XAI_VOICE_AGENT_ID,
+} from "./xai-config";
 
 const moduleLog = createLogger({ module: "proxy-handler" });
 
@@ -152,7 +157,13 @@ export async function handleProxyConnection(
     }, WEB_VOICE_MAX_SESSION_MINUTES * 60 * 1000);
 
     xaiWs.on("open", () => {
-      sessionLog.info("xai_connected", { endpoint: XAI_REALTIME_URL });
+      // Log which realtime mode is active (dashboard agent vs model).
+      sessionLog.info("xai_connected", {
+        endpoint: XAI_REALTIME_URL,
+        mode: USE_DASHBOARD_AGENT ? "agent_id" : "model",
+        xaiVoiceAgentId: USE_DASHBOARD_AGENT ? XAI_VOICE_AGENT_ID : null,
+        model: USE_DASHBOARD_AGENT ? null : XAI_REALTIME_MODEL,
+      });
       for (const msg of messageBuffer) {
         xaiWs.send(msg);
       }

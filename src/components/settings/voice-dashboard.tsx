@@ -104,8 +104,11 @@ export function VoiceDashboard() {
           <p>
             Pipeline: Settings → <code>POST /api/voice/session</code> →{" "}
             <code>wss://&#123;proxy&#125;/voice-proxy</code> → xAI realtime.
-            <code>session.update</code> carries soul instructions, voice ID,
-            speed, and <code>file_search</code> collection IDs.
+            When <code>XAI_VOICE_AGENT_ID</code> is set (Railway + Vercel), the
+            console agent owns persona/tools and <code>session.update</code> is
+            transport-only. Otherwise <code>session.update</code> carries soul
+            instructions, voice ID, speed, and <code>file_search</code>{" "}
+            collection IDs (preview mocks until phase 2).
           </p>
         </div>
       </RuntimeConnectionPanel>
@@ -169,7 +172,8 @@ export function VoiceDashboard() {
                 value={state.voice.model}
               />
               <p className="text-muted-foreground text-xs">
-                Set on Railway as <code>XAI_REALTIME_MODEL</code>
+                Used when <code>XAI_VOICE_AGENT_ID</code> is unset. Set on
+                Railway as <code>XAI_REALTIME_MODEL</code>.
               </p>
             </div>
           </CardContent>
@@ -179,7 +183,8 @@ export function VoiceDashboard() {
           <CardHeader className="border-b px-4 py-4">
             <CardTitle className="text-base">Default voice</CardTitle>
             <CardDescription>
-              Maps to <code>session.update.voice</code>
+              Maps to <code>session.update.voice</code> when{" "}
+              <code>XAI_VOICE_AGENT_ID</code> is unset
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4 px-4 py-4">

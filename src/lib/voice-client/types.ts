@@ -11,6 +11,8 @@ export interface GrokVoiceSessionTokens {
   gate_token: string;
   expires_at?: string;
   session_id?: string;
+  /** True when XAI_VOICE_AGENT_ID is set — skip local persona session.update fields. */
+  dashboard_agent?: boolean;
 }
 
 export interface ConversationHistoryMessage {
