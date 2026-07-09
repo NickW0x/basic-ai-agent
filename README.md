@@ -336,8 +336,7 @@ See the [Resend adapter docs](https://chat-sdk.dev/adapters/vendor-official/rese
 agent/                          # eve agent (source of truth)
   agent.ts                      # Dynamic model from UI clientContext
   instructions.md               # Orchestrator system prompt
-  skills/
-    ai-elements/                # AI Elements reference skill (~129 files)
+  skills/                       # eve load_skill markdown (e.g. chat-reply-format.md)
   lib/                          # Shared helpers (Tavily, fetch-page, project-files, connectors)
   tools/                        # disableTool() overrides at root (incl. agent self-copy)
   subagents/
@@ -363,7 +362,7 @@ src/
       transcribe/               # xAI STT fallback
       connectors/status/        # Legacy connector slice (thin re-export)
   components/
-    ai-elements/                # Vercel AI Elements
+    ai-elements/                # Vercel AI Elements (installed UI components)
     chat/
       eve-chat-shell.tsx        # useEveAgent shell + voice mode
       eve-message-list.tsx      # Roster, subagent activity, messages, voice panel
@@ -387,6 +386,8 @@ src/
 next.config.ts                  # withEve()
 .npmrc                          # legacy-peer-deps=true
 .env.example                    # Required environment variables
+.cursor/skills/
+  ai-elements/                  # Cursor project skill (AI Elements reference + demos)
 ```
 
 ## Scripts
@@ -403,5 +404,5 @@ next.config.ts                  # withEve()
 - [eve Documentation](https://eve.dev/docs) — also available locally in `node_modules/eve/docs/`
 - [Chat SDK Documentation](https://chat-sdk.dev/docs)
 - [AI Elements Documentation](https://elements.ai-sdk.dev/docs)
-- [AI Elements skill](agent/skills/ai-elements/SKILL.md) — bundled component reference and demo scripts
+- [AI Elements skill](.cursor/skills/ai-elements/SKILL.md) — Cursor project skill (component reference + demos)
 - [Adapter Setup Guides](https://chat-sdk.dev/adapters)

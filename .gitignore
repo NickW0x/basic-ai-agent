@@ -15,8 +15,10 @@ out/
 .workflow-data/
 .vercel/
 
-# IDE / agent tooling (local only)
-.cursor/
+# IDE / agent tooling (local only); keep project Cursor skills tracked
+.cursor/*
+!.cursor/skills/
+!.cursor/skills/**
 .agents/
 .claude/
 skills-lock.json

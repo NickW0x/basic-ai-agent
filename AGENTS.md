@@ -19,8 +19,7 @@ Requires **Node 24+**.
 agent/
   agent.ts                    # Root runtime config (model, limits)
   instructions.md             # Orchestrator system prompt
-  skills/
-    ai-elements/              # AI Elements reference skill
+  skills/                     # eve load_skill markdown (e.g. chat-reply-format.md)
   tools/                      # Root tools (disableTool overrides)
   subagents/                  # researcher, analyst, summarizer, coder, marketer
   channels/
@@ -54,6 +53,8 @@ src/
   lib/eve-host.ts             # Local eve dev server origin helper
 .env.example                  # Required environment variables
 next.config.ts                # withEve() wraps Next.js config
+.cursor/skills/
+  ai-elements/                # Cursor project skill (AI Elements reference + demos)
 ```
 
 ## How it works
