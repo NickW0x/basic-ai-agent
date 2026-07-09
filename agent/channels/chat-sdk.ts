@@ -4,7 +4,7 @@ import type { ActionEvent, Message, Thread } from "chat";
 import { registerEnabledAdapters } from "../lib/register-adapters";
 import { chatSdkChannel, messageToUserContent } from "eve/channels/chat-sdk";
 
-const userName = process.env.BOT_USERNAME ?? "basic-ai-agent";
+const userName = process.env.BOT_USERNAME ?? "opensocket-ai-agent";
 
 function resolveInputAuth(event: ActionEvent) {
   const userId = event.user?.userId ?? "unknown";

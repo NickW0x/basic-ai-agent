@@ -1,8 +1,8 @@
-# basic-ai-agent
+# OpenSocket AI Agent
 
 A multi-platform multi-agent assistant built with [eve](https://eve.dev), [Chat SDK](https://chat-sdk.dev), and a polished web UI powered by [Vercel AI Elements](https://elements.ai-sdk.dev).
 
-**Production URL:** [https://agent.opensocket.xyz](https://agent.opensocket.xyz) (Vercel project `basic-ai-agent`; also served on `*.vercel.app`).
+**Production URL:** [https://agent.opensocket.xyz](https://agent.opensocket.xyz) (Vercel project `opensocket-ai-agent`; also served on `*.vercel.app`).
 
 ## Prerequisites
 
@@ -154,7 +154,7 @@ sequenceDiagram
 | `AI_MODEL` | No | Default model override (fallback: `anthropic/claude-sonnet-4`) |
 | `TAVILY_API_KEY` | No | Enables researcher `search_web` tool via Tavily |
 | `REDIS_URL` | Production | Chat SDK subscriptions and distributed locks; dev falls back to in-memory state |
-| `BOT_USERNAME` | No | Chat SDK bot display name (default: `basic-ai-agent`) |
+| `BOT_USERNAME` | No | Chat SDK bot display name (default: `opensocket-ai-agent`) |
 | `XAI_API_KEY` | Voice only | xAI realtime tokens + `/api/transcribe` STT |
 | `NEXT_PUBLIC_VOICE_PROXY_URL` | Voice only | Public Railway proxy URL (client WebSocket) |
 | `VOICE_PROXY_SHARED_SECRET` | Voice only | HMAC gate between Next.js and proxy |

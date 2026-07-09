@@ -12,7 +12,7 @@ const appUrl =
 
 export const metadata: Metadata = {
   metadataBase: new URL(appUrl),
-  title: "Basic AI Agent",
+  title: "OpenSocket AI Agent",
   description: "A basic AI agent built with Vercel AI SDK and Chat SDK",
 };
 

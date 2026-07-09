@@ -1,5 +1,5 @@
 /**
- * Standalone Grok Voice WebSocket proxy for basic-ai-agent.
+ * Standalone Grok Voice WebSocket proxy for opensocket-ai-agent.
  * Browser ←WebSocket→ Proxy ←WebSocket→ xAI Realtime
  */
 
@@ -164,7 +164,7 @@ app.get("/", (_req, res) => {
       health: "/health",
       websocket: "/voice-proxy",
     },
-    service: "basic-ai-agent Grok Voice Proxy",
+    service: "opensocket-ai-agent Grok Voice Proxy",
     version: "1.0.0",
   });
 });

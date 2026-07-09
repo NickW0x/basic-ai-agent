@@ -70,7 +70,7 @@ export async function fetchPageText(url: string): Promise<FetchPageResult> {
       signal: controller.signal,
       headers: {
         Accept: "text/html,application/xhtml+xml,text/plain;q=0.9,*/*;q=0.8",
-        "User-Agent": "basic-ai-agent/1.0",
+        "User-Agent": "opensocket-ai-agent/1.0",
       },
     });
 

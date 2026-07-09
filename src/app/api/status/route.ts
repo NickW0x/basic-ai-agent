@@ -59,7 +59,7 @@ export async function GET(request: Request) {
     tasks.push(
       Promise.resolve().then(() => {
         response.connectors = {
-          botUsername: process.env.BOT_USERNAME?.trim() || "basic-ai-agent",
+          botUsername: process.env.BOT_USERNAME?.trim() || "opensocket-ai-agent",
           connectors: getConnectorStatuses(),
           state: getStateStorageStatus(),
         };
