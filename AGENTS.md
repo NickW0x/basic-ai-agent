@@ -2,6 +2,8 @@
 
 This is a multi-platform multi-agent assistant built with [eve](https://eve.dev), [Chat SDK](https://chat-sdk.dev), and a web UI powered by [Vercel AI Elements](https://elements.ai-sdk.dev).
 
+**Production:** [https://agent.opensocket.xyz](https://agent.opensocket.xyz)
+
 ## Commands
 
 ```bash

@@ -4,7 +4,14 @@ import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import "./globals.css";
 
+// Prefer the custom production domain when set (Vercel + local).
+const appUrl =
+  process.env.NEXT_PUBLIC_APP_URL?.trim() ||
+  process.env.APP_URL?.trim() ||
+  "https://agent.opensocket.xyz";
+
 export const metadata: Metadata = {
+  metadataBase: new URL(appUrl),
   title: "Basic AI Agent",
   description: "A basic AI agent built with Vercel AI SDK and Chat SDK",
 };

@@ -20,9 +20,12 @@ const app = express();
 const server = createServer(app);
 
 const PORT = Number.parseInt(process.env.PORT || "8080", 10);
-const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS?.split(",") || [
+// Comma-separated browser origins allowed to open the WebSocket (trim spaces).
+const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS?.split(",") || [
   "http://localhost:3000",
-];
+])
+  .map((origin) => origin.trim())
+  .filter(Boolean);
 
 let redis: Redis | null = null;
 const redisUrl = process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL;

@@ -2,6 +2,8 @@
 
 A multi-platform multi-agent assistant built with [eve](https://eve.dev), [Chat SDK](https://chat-sdk.dev), and a polished web UI powered by [Vercel AI Elements](https://elements.ai-sdk.dev).
 
+**Production URL:** [https://agent.opensocket.xyz](https://agent.opensocket.xyz) (Vercel project `basic-ai-agent`; also served on `*.vercel.app`).
+
 ## Prerequisites
 
 - **Node 24+** (see `engines` in `package.json`)
@@ -135,7 +137,7 @@ sequenceDiagram
 ### Deploy the voice proxy
 
 1. Create a **new** Railway service from [`services/voice-proxy/`](services/voice-proxy/) ([`railway.toml`](services/voice-proxy/railway.toml) — Railpack build, `/health` check). Never reuse or modify the fieldflow service at `voice.tradecraft.nexus`.
-2. Set Railway variables: `XAI_API_KEY`, `VOICE_PROXY_SHARED_SECRET`, `ALLOWED_ORIGINS` (your Vercel app + `http://localhost:3000`), optional `XAI_VOICE_AGENT_ID` (console Voice Agent Builder ID), optional `XAI_REALTIME_MODEL` (used only when `XAI_VOICE_AGENT_ID` is unset), optional Upstash `KV_REST_API_URL` / `KV_REST_API_TOKEN` for connection limits.
+2. Set Railway variables: `XAI_API_KEY`, `VOICE_PROXY_SHARED_SECRET`, `ALLOWED_ORIGINS` (`https://agent.opensocket.xyz`, your `*.vercel.app` URL, and `http://localhost:3000`), optional `XAI_VOICE_AGENT_ID` (console Voice Agent Builder ID), optional `XAI_REALTIME_MODEL` (used only when `XAI_VOICE_AGENT_ID` is unset), optional Upstash `KV_REST_API_URL` / `KV_REST_API_TOKEN` for connection limits.
 3. Set Vercel/local variables: `XAI_API_KEY`, `NEXT_PUBLIC_VOICE_PROXY_URL`, `VOICE_PROXY_SHARED_SECRET` (must match Railway). If using a dashboard agent, set the same `XAI_VOICE_AGENT_ID` here so the web client sends transport-only `session.update`.
 4. Open the chat UI → header **Voice mode** → **Connect**. The settings preview at `/settings/voice` does not affect live sessions until phase 2 (and local soul/voice overrides are skipped when `XAI_VOICE_AGENT_ID` is set).
 
@@ -147,6 +149,7 @@ sequenceDiagram
 
 | Variable | Required | Purpose |
 | --- | --- | --- |
+| `APP_URL` / `NEXT_PUBLIC_APP_URL` | Recommended | Canonical public origin (`https://agent.opensocket.xyz`) for metadata + server probes |
 | `AI_GATEWAY_API_KEY` | Yes | LLM calls via [Vercel AI Gateway](https://vercel.com/docs/ai-gateway) |
 | `AI_MODEL` | No | Default model override (fallback: `anthropic/claude-sonnet-4`) |
 | `TAVILY_API_KEY` | No | Enables researcher `search_web` tool via Tavily |
@@ -155,7 +158,7 @@ sequenceDiagram
 | `XAI_API_KEY` | Voice only | xAI realtime tokens + `/api/transcribe` STT |
 | `NEXT_PUBLIC_VOICE_PROXY_URL` | Voice only | Public Railway proxy URL (client WebSocket) |
 | `VOICE_PROXY_SHARED_SECRET` | Voice only | HMAC gate between Next.js and proxy |
-| `ALLOWED_ORIGINS` | Railway proxy | CORS allowlist (Vercel app + `http://localhost:3000`) |
+| `ALLOWED_ORIGINS` | Railway proxy | CORS allowlist (`https://agent.opensocket.xyz` + `*.vercel.app` + `http://localhost:3000`) |
 | `XAI_VOICE_AGENT_ID` | No | Console Voice Agent Builder ID; set on Railway + Vercel/local. Prefer over model mode |
 | `XAI_REALTIME_MODEL` | No | Default `grok-voice-think-fast-1.0` on proxy when `XAI_VOICE_AGENT_ID` is unset |
 | Platform vars | Per adapter | Enable Slack, Telegram, WhatsApp, Messenger, X, Google Chat, GitHub, Sendblue, Discord, Teams, Linear, or Resend conditionally |
@@ -190,7 +193,7 @@ See [`.env.example`](.env.example) for the full list. The placeholder `REDIS_URL
 | Linear webhook | `/api/webhooks/linear` |
 | Resend webhook | `/api/webhooks/resend` |
 
-Replace `https://your-domain.com` with your deployed URL or tunnel address. eve also serves internal workflow routes in production — no manual setup required.
+Replace `https://agent.opensocket.xyz` with a tunnel address for local webhook testing. eve also serves internal workflow routes in production — no manual setup required.
 
 ## Platform Setup
 
@@ -201,7 +204,7 @@ Set `REDIS_URL` to your [Upstash Redis](https://upstash.com) connection string. 
 ### Slack
 
 1. Create a Slack app at [api.slack.com/apps](https://api.slack.com/apps).
-2. Enable **Event Subscriptions** with request URL `https://your-domain.com/api/webhooks/slack`.
+2. Enable **Event Subscriptions** with request URL `https://agent.opensocket.xyz/api/webhooks/slack`.
 3. Subscribe to bot events: `app_mention`, and optionally `message.im` / `message.channels`.
 4. Install the app to your workspace and copy the **Bot User OAuth Token** and **Signing Secret**.
 5. Set `SLACK_BOT_TOKEN` and `SLACK_SIGNING_SECRET` in `.env.local`.
@@ -215,7 +218,7 @@ Set `REDIS_URL` to your [Upstash Redis](https://upstash.com) connection string. 
 ```bash
 curl -X POST "https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/setWebhook" \
   -H "Content-Type: application/json" \
-  -d '{"url": "https://your-domain.com/api/webhooks/telegram", "secret_token": "your-webhook-secret"}'
+  -d '{"url": "https://agent.opensocket.xyz/api/webhooks/telegram", "secret_token": "your-webhook-secret"}'
 ```
 
 In local dev, the adapter uses polling automatically when no webhook is configured.
@@ -223,7 +226,7 @@ In local dev, the adapter uses polling automatically when no webhook is configur
 ### WhatsApp Business Cloud
 
 1. Create a Meta app at [developers.facebook.com/apps](https://developers.facebook.com/apps) and add the **WhatsApp** product.
-2. Set callback URL to `https://your-domain.com/api/webhooks/whatsapp`.
+2. Set callback URL to `https://agent.opensocket.xyz/api/webhooks/whatsapp`.
 3. Set a verify token and subscribe to the `messages` field.
 4. Copy **App Secret**, **Access Token**, and **Phone Number ID** from the Meta dashboard.
 5. Set `WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_APP_SECRET`, `WHATSAPP_PHONE_NUMBER_ID`, and `WHATSAPP_VERIFY_TOKEN`.
@@ -231,7 +234,7 @@ In local dev, the adapter uses polling automatically when no webhook is configur
 ### Facebook Messenger
 
 1. Create a Meta app at [developers.facebook.com/apps](https://developers.facebook.com/apps) and add **Messenger**.
-2. Under **Messenger → Settings**, set callback URL to `https://your-domain.com/api/webhooks/messenger` and choose a verify token (`FACEBOOK_VERIFY_TOKEN`).
+2. Under **Messenger → Settings**, set callback URL to `https://agent.opensocket.xyz/api/webhooks/messenger` and choose a verify token (`FACEBOOK_VERIFY_TOKEN`).
 3. Subscribe to: `messages`, `messaging_postbacks`, `messaging_reactions`, `message_deliveries`, `message_reads`.
 4. Generate a **Page Access Token** for your Facebook Page.
 5. Set `FACEBOOK_APP_SECRET`, `FACEBOOK_PAGE_ACCESS_TOKEN`, and `FACEBOOK_VERIFY_TOKEN` in `.env.local`.
@@ -243,7 +246,7 @@ See the [Messenger adapter docs](https://chat-sdk.dev/adapters/official/messenge
 1. Create a Project and App in the [X developer portal](https://developer.x.com).
 2. Copy the **API Key Secret** to `X_CONSUMER_SECRET`.
 3. Enable OAuth 2.0 user authentication with scopes: `tweet.read`, `tweet.write`, `users.read`, `dm.read`, `dm.write`, `like.write`, and `offline.access`.
-4. In the [X developer console](https://console.x.com), register webhook `https://your-domain.com/api/webhooks/x` (HTTPS, no port) and subscribe to `post.mention.create`, `dm.received`, and `dm.sent`.
+4. In the [X developer console](https://console.x.com), register webhook `https://agent.opensocket.xyz/api/webhooks/x` (HTTPS, no port) and subscribe to `post.mention.create`, `dm.received`, and `dm.sent`.
 5. Set credentials in `.env.local`:
    - **Option A:** `X_USER_ACCESS_TOKEN` (static, ~2h expiry)
    - **Option B (production):** `X_CLIENT_ID` + `X_REFRESH_TOKEN` with `REDIS_URL` for token persistence
@@ -255,7 +258,7 @@ See the [X adapter docs](https://chat-sdk.dev/adapters/official/x).
 ### Google Chat
 
 1. Create a GCP project and enable the Google Chat API, Google Workspace Events API, and Cloud Pub/Sub API.
-2. Create a service account, download the JSON key, and configure a Google Chat app with App URL `https://your-domain.com/api/webhooks/gchat`.
+2. Create a service account, download the JSON key, and configure a Google Chat app with App URL `https://agent.opensocket.xyz/api/webhooks/gchat`.
 3. Set `GOOGLE_CHAT_CREDENTIALS` (single-line JSON) and `GOOGLE_CHAT_PROJECT_NUMBER`.
 4. Optional: configure Pub/Sub for all space messages — set `GOOGLE_CHAT_PUBSUB_TOPIC`, `GOOGLE_CHAT_IMPERSONATE_USER`, and `GOOGLE_CHAT_PUBSUB_AUDIENCE`.
 
@@ -269,7 +272,7 @@ The bot responds to `@mentions` in issue and pull request comment threads.
 
 1. Create a token at [github.com/settings/tokens](https://github.com/settings/tokens) with `repo` scope.
 2. Add a repository webhook:
-   - **Payload URL:** `https://your-domain.com/api/webhooks/github`
+   - **Payload URL:** `https://agent.opensocket.xyz/api/webhooks/github`
    - **Content type:** `application/json`
    - **Secret:** match `GITHUB_WEBHOOK_SECRET`
    - **Events:** Issue comments, Pull request review comments
@@ -278,7 +281,7 @@ The bot responds to `@mentions` in issue and pull request comment threads.
 **Option B — GitHub App** (recommended for production):
 
 1. Create an app at [github.com/settings/apps/new](https://github.com/settings/apps/new).
-2. Set **Webhook URL** to `https://your-domain.com/api/webhooks/github` and generate a **Webhook secret**.
+2. Set **Webhook URL** to `https://agent.opensocket.xyz/api/webhooks/github` and generate a **Webhook secret**.
 3. Set permissions: Issues (Read & write), Pull requests (Read & write), Metadata (Read-only).
 4. Subscribe to events: **Issue comment**, **Pull request review comment**.
 5. Create the app, generate a **private key**, then **Install App** on your account/repos.
@@ -289,7 +292,7 @@ Test by @mentioning your bot on a PR or issue comment.
 ### Sendblue
 
 1. Sign up at [Sendblue](https://sendblue.com) and obtain API credentials (`SENDBLUE_API_KEY`, `SENDBLUE_API_SECRET`) and a sender number (`SENDBLUE_FROM_NUMBER` in E.164 format).
-2. Set the receive webhook URL to `https://your-domain.com/api/webhooks/sendblue`.
+2. Set the receive webhook URL to `https://agent.opensocket.xyz/api/webhooks/sendblue`.
 3. Optionally set `SENDBLUE_WEBHOOK_SECRET` for signature verification.
 4. The adapter accepts iMessage, SMS, and RCS inbound traffic when credentials are set.
 
@@ -300,7 +303,7 @@ See the [Sendblue adapter docs](https://chat-sdk.dev/adapters/vendor-official/se
 1. Create an application in the [Discord Developer Portal](https://discord.com/developers/applications).
 2. Copy the **Application ID** and **Public Key** from General Information.
 3. Create a bot token under **Bot** and enable **Message Content Intent** if needed.
-4. Set **Interactions Endpoint URL** to `https://your-domain.com/api/webhooks/discord`.
+4. Set **Interactions Endpoint URL** to `https://agent.opensocket.xyz/api/webhooks/discord`.
 5. Set `DISCORD_BOT_TOKEN`, `DISCORD_PUBLIC_KEY`, and `DISCORD_APPLICATION_ID` in `.env.local`.
 
 **Note:** HTTP interactions handle slash commands and @mentions on serverless. Regular channel messages require a [Gateway listener](https://chat-sdk.dev/adapters/official/discord) cron on Vercel.
@@ -308,7 +311,7 @@ See the [Sendblue adapter docs](https://chat-sdk.dev/adapters/vendor-official/se
 ### Microsoft Teams
 
 1. Install the [Teams CLI](https://www.npmjs.com/package/@microsoft/teams.cli): `npm install -g @microsoft/teams.cli`
-2. Run `teams login`, then `teams app create --name "My Bot" --endpoint "https://your-domain.com/api/webhooks/teams" --env .env`
+2. Run `teams login`, then `teams app create --name "My Bot" --endpoint "https://agent.opensocket.xyz/api/webhooks/teams" --env .env`
 3. Map credentials to `TEAMS_APP_ID`, `TEAMS_APP_PASSWORD`, and optionally `TEAMS_APP_TENANT_ID`.
 4. Install the app in Teams via the generated install link.
 
@@ -317,7 +320,7 @@ See the [Teams adapter docs](https://chat-sdk.dev/adapters/official/teams) for R
 ### Linear
 
 1. Create a personal API key at **Settings → Security & Access** with comment permissions.
-2. Create a webhook at **Settings → API** pointing to `https://your-domain.com/api/webhooks/linear`.
+2. Create a webhook at **Settings → API** pointing to `https://agent.opensocket.xyz/api/webhooks/linear`.
 3. Copy the signing secret to `LINEAR_WEBHOOK_SECRET`.
 4. Set `LINEAR_API_KEY` in `.env.local`.
 5. For @-mentionable app actors, set `LINEAR_MODE=agent-sessions` and install with the `app:mentionable` scope.
@@ -329,7 +332,7 @@ See the [Linear adapter docs](https://chat-sdk.dev/adapters/official/linear) for
 1. Create a [Resend](https://resend.com) account and verify your sending domain.
 2. Create an API key (`RESEND_API_KEY`) and inbound webhook (`RESEND_WEBHOOK_SECRET`).
 3. Set `RESEND_FROM_ADDRESS` (and optionally `RESEND_FROM_NAME`) for outbound email.
-4. Point the Resend inbound webhook to `https://your-domain.com/api/webhooks/resend`.
+4. Point the Resend inbound webhook to `https://agent.opensocket.xyz/api/webhooks/resend`.
 
 See the [Resend adapter docs](https://chat-sdk.dev/adapters/vendor-official/resend) for threading and card email examples.
 
